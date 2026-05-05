@@ -6,6 +6,7 @@ export interface UserProfile {
   email: string | null;
   photoURL: string | null;
   role: UserRole;
+  guildId: string;
   createdAt: string;
 }
 
@@ -14,6 +15,7 @@ export type IssueStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
 
 export interface Issue {
   id: string;
+  guildId: string;
   title: string;
   description: string;
   areaId: string;
@@ -48,6 +50,7 @@ export interface IssueEvent {
 
 export interface Area {
   id: string;
+  guildId: string;
   name: string;
   color: string;
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { collection, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, limit, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Issue, OperationType } from '../types';
 import { handleFirestoreError } from '../constants';
@@ -17,12 +17,20 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const q = query(collection(db, 'issues'), orderBy('createdAt', 'desc'));
+    if (!profile) return;
+    const q = query(collection(db, 'issues'), where('guildId', '==', profile.guildId));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const issuesList = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Issue[];
+      
+      issuesList.sort((a, b) => {
+        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+        return timeB - timeA;
+      });
+      
       setIssues(issuesList);
       setLoading(false);
     }, (err) => {
@@ -30,7 +38,7 @@ export default function Dashboard() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [profile]);
 
   const stats = {
     total: issues.length,
@@ -56,42 +64,42 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-10">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
         <div>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tighter">Azeroth Core</h1>
-          <p className="text-slate-500 font-medium">Panel de Control de Inteligencia Operativa</p>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tighter">Panel de Control</h1>
+          <p className="text-slate-500 font-medium">Centro de Mando Operativo</p>
         </div>
         <div className="mt-4 md:mt-0 flex items-center gap-4">
            <div className="text-right">
-             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sincronización</p>
-             <p className="text-xs font-bold text-emerald-500 flex items-center gap-1 justify-end">
+             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Estado</p>
+             <p className="text-xs font-semibold text-emerald-600 flex items-center gap-1 justify-end">
                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-               EN TIEMPO REAL
+               En Línea
              </p>
            </div>
-           <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600">
-             <Zap className="w-6 h-6" />
+           <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-primary-600 border border-slate-100">
+             <Zap className="w-5 h-5" />
            </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <GlassCard 
-          label="Carga de Trabajo" 
+          label="Incidencias Activas" 
           value={stats.active} 
           icon={Activity} 
           color="blue" 
-          description="Incidencias activas actualmente"
+          description="Reportes activos actualmente"
         />
         <GlassCard 
-          label="Resolución" 
-          value={`${Math.round((stats.resolved / stats.total) * 100 || 0)}%`} 
+          label="Tareas Cerradas" 
+          value={stats.resolved} 
           icon={CheckCircle2} 
           color="emerald" 
-          description="Tasa de éxito acumulada"
+          description="Incidencias resueltas"
         />
         <GlassCard 
-          label="Nivel Crítico" 
+          label="Prioridad Crítica" 
           value={stats.critical} 
           icon={AlertCircle} 
           color="red" 
@@ -100,30 +108,30 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        <div className="xl:col-span-2 space-y-8">
-          <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm overflow-hidden relative">
-            <div className="flex items-center justify-between mb-10">
+        <div className="xl:col-span-2 space-y-6">
+          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm overflow-hidden relative text-slate-900">
+            <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Distribución por Áreas</h3>
-                <p className="text-sm text-slate-400 font-medium">Volumen de incidencias por departamento</p>
+                <h3 className="text-lg font-bold text-slate-800">Actividad por Área</h3>
+                <p className="text-sm text-slate-500">Volumen de incidencias detectadas</p>
               </div>
-              <Box className="w-8 h-8 text-blue-100" />
+              <Box className="w-6 h-6 text-slate-300" />
             </div>
             <div className="h-[350px]">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={areaData}>
                   <defs>
                     <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/>
                       <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }} />
                   <Tooltip 
-                    contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', padding: '12px' }}
-                    labelStyle={{ fontWeight: 800, color: '#1e293b' }}
+                    contentStyle={{ borderRadius: '20px', border: '1px solid #e2e8f0', backgroundColor: '#ffffff', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.05)', padding: '12px' }}
+                    labelStyle={{ fontWeight: 800, color: '#0f172a' }}
                   />
                   <Area type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={4} fillOpacity={1} fill="url(#colorValue)" />
                 </AreaChart>
@@ -131,36 +139,33 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="bg-slate-900 p-10 rounded-[3rem] shadow-2xl text-white overflow-hidden relative">
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-8">
-                <h3 className="text-xl font-black uppercase tracking-tight">Última Actividad</h3>
-                <ListTodo className="w-6 h-6 text-blue-400" />
-              </div>
-              <div className="space-y-4">
-                {issues.slice(0, 4).map((issue) => (
-                  <div key={issue.id} className="flex items-center justify-between p-5 bg-white/5 rounded-3xl border border-white/10 hover:bg-white/10 transition-all group">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center font-black text-lg">
-                        {issue.userName?.charAt(0)}
-                      </div>
-                      <div>
-                        <p className="font-bold text-sm group-hover:text-blue-400 transition-colors uppercase">{issue.title}</p>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{issue.areaName} • {formatDate(issue.createdAt)}</p>
-                      </div>
-                    </div>
-                    <ChevronRightIcon className="w-5 h-5 text-slate-600 group-hover:text-white transition-colors" />
-                  </div>
-                ))}
-              </div>
+          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm text-slate-900 relative">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-slate-800">Últimos Registros</h3>
+              <ListTodo className="w-5 h-5 text-slate-400" />
             </div>
-            <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl" />
+            <div className="space-y-3">
+              {issues.slice(0, 4).map((issue) => (
+                <div key={issue.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-primary-100 transition-all group cursor-pointer">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-primary-50 flex items-center justify-center font-semibold text-primary-600 text-sm">
+                      {issue.userName?.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm text-slate-800 group-hover:text-primary-600 transition-colors">{issue.title}</p>
+                      <p className="text-xs text-slate-500">{issue.areaName} • {formatDate(issue.createdAt)}</p>
+                    </div>
+                  </div>
+                  <ChevronRightIcon className="w-4 h-4 text-slate-300 group-hover:text-primary-500 transition-colors" />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
-        <div className="space-y-8">
-          <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm h-full">
-            <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-8">Estado Global</h3>
+        <div className="space-y-6">
+          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm h-full text-slate-900">
+            <h3 className="text-lg font-bold text-slate-800 mb-6">Balance Global</h3>
             <div className="h-64 mb-10">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -177,18 +182,20 @@ export default function Dashboard() {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} cornerRadius={8} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#ffffff' }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {statusData.map((s, i) => (
-                <div key={s.name} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+                <div key={s.name} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                   <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                    <span className="text-xs font-black text-slate-600 uppercase tracking-widest">{s.name}</span>
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                    <span className="text-xs font-semibold text-slate-600">{s.name}</span>
                   </div>
-                  <span className="text-sm font-black text-slate-900">{s.value}</span>
+                  <span className="text-sm font-bold text-slate-900">{s.value}</span>
                 </div>
               ))}
             </div>
@@ -201,26 +208,25 @@ export default function Dashboard() {
 
 function GlassCard({ label, value, icon: Icon, color, description }: any) {
   const themes: any = {
-    blue: 'border-blue-100 bg-blue-50/50 text-blue-600',
-    emerald: 'border-emerald-100 bg-emerald-50/50 text-emerald-600',
-    red: 'border-red-100 bg-red-50/50 text-red-600',
+    blue: 'bg-primary-50 text-primary-600',
+    emerald: 'bg-emerald-50 text-emerald-600',
+    red: 'bg-red-50 text-red-600',
   };
 
   return (
     <motion.div 
-      whileHover={{ scale: 1.02, y: -5 }}
-      className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col justify-between"
+      className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between"
     >
-      <div className="flex items-start justify-between mb-6">
-        <div className={cn("p-4 rounded-2xl border", themes[color])}>
-          <Icon className="w-8 h-8" />
+      <div className="flex items-start justify-between mb-4">
+        <div className={cn("p-3 rounded-xl", themes[color])}>
+          <Icon className="w-6 h-6" />
         </div>
         <div className="text-right">
-           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{label}</p>
-           <p className="text-3xl font-black text-slate-900 mt-1">{value}</p>
+           <p className="text-xs font-semibold text-slate-500">{label}</p>
+           <p className="text-3xl font-bold text-slate-900 mt-1">{value}</p>
         </div>
       </div>
-      <p className="text-xs font-bold text-slate-400 italic">
+      <p className="text-xs text-slate-400">
         {description}
       </p>
     </motion.div>

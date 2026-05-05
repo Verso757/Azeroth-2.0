@@ -17,13 +17,13 @@ export default function Layout() {
   };
 
   const navItems = [
-    { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-    { name: 'Azeroth Base', path: '/issues', icon: ListTodo },
-    { name: 'Nueva Carga', path: '/new-issue', icon: PlusCircle },
+    { name: 'Panel Principal', path: '/', icon: LayoutDashboard },
+    { name: 'Incidencias', path: '/issues', icon: ListTodo },
+    { name: 'Nueva Incidencia', path: '/new-issue', icon: PlusCircle },
   ];
 
   if (isAdmin) {
-    navItems.push({ name: 'Control Maestro', path: '/admin', icon: ShieldAlert });
+    navItems.push({ name: 'Administración', path: '/admin', icon: ShieldAlert });
   }
 
   return (
@@ -32,10 +32,12 @@ export default function Layout() {
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100 px-6 md:px-12 py-4 shadow-sm">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-200 group-hover:scale-105 transition-transform">
-              <ShieldAlert className="w-6 h-6" />
+            {/* LOGO: The image will load from /public/logo.png. By default it shows an icon if not found. */}
+            <div className="w-10 h-10 rounded-2xl bg-primary-600 flex items-center justify-center text-white shadow-lg shadow-primary-200 group-hover:scale-105 transition-transform overflow-hidden">
+              <img src="/logo.png" alt="Logo" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />
+              <ShieldAlert className="w-6 h-6 hidden" />
             </div>
-            <span className="text-xl font-black text-slate-900 tracking-tighter uppercase">Azeroth</span>
+            <span className="text-xl font-black text-slate-900 tracking-tight">Azeroth</span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -47,7 +49,7 @@ export default function Layout() {
                 className={cn(
                   "flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
                   location.pathname === item.path
-                    ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
+                    ? "bg-primary-600 text-white shadow-lg shadow-primary-500/20"
                     : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
                 )}
               >
@@ -62,9 +64,9 @@ export default function Layout() {
             <div className="flex items-center gap-3">
               <div className="text-right">
                 <p className="text-[10px] font-black text-slate-900 uppercase tracking-tight">{profile?.displayName || 'Usuario'}</p>
-                <p className="text-[9px] font-bold text-blue-500 uppercase tracking-widest">{profile?.role}</p>
+                <p className="text-[9px] font-bold text-primary-500 uppercase tracking-widest">{profile?.role}</p>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 overflow-hidden flex items-center justify-center text-blue-600 font-black shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 overflow-hidden flex items-center justify-center text-primary-600 font-black shadow-sm">
                 {profile?.photoURL ? (
                   <img src={profile.photoURL} alt="Profile" className="w-full h-full object-cover" />
                 ) : (
@@ -110,7 +112,7 @@ export default function Layout() {
               className="fixed right-0 top-0 bottom-0 w-[80%] max-w-sm bg-white z-50 shadow-2xl p-8 md:hidden flex flex-col"
             >
               <div className="flex items-center justify-between mb-10">
-                <span className="text-xl font-black text-slate-900 uppercase tracking-tighter">Menú</span>
+                <span className="text-xl font-bold text-slate-900">Azeroth</span>
                 <button 
                   onClick={() => setIsMenuOpen(false)}
                   className="p-2 text-slate-400 hover:bg-slate-100 rounded-xl"
@@ -120,12 +122,12 @@ export default function Layout() {
               </div>
 
               <div className="flex items-center gap-4 p-5 bg-slate-50 rounded-[2rem] mb-8 border border-slate-100">
-                <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-blue-600 font-black border border-slate-200">
+                <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-primary-600 font-black border border-slate-200">
                   {profile?.displayName?.charAt(0) || 'U'}
                 </div>
                 <div>
                   <p className="text-sm font-black text-slate-900 uppercase">{profile?.displayName || 'Usuario'}</p>
-                  <p className="text-[10px] font-bold text-blue-500 uppercase">{profile?.role}</p>
+                  <p className="text-[10px] font-bold text-primary-600 uppercase">{profile?.role}</p>
                 </div>
               </div>
 
@@ -138,7 +140,7 @@ export default function Layout() {
                     className={cn(
                       "flex items-center gap-4 px-6 py-4 rounded-2xl text-sm font-black uppercase tracking-widest transition-all",
                       location.pathname === item.path
-                        ? "bg-blue-600 text-white shadow-xl shadow-blue-500/20"
+                        ? "bg-primary-600 text-white shadow-xl shadow-primary-500/20"
                         : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
                     )}
                   >

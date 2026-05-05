@@ -4,15 +4,15 @@ import { db } from '../firebase';
 import { useAuth } from '../AuthContext';
 import { Issue, IssueEvent, IssueStatus, OperationType } from '../types';
 import { handleFirestoreError } from '../constants';
-import { Filter, Search, Clock, CheckCircle2, AlertTriangle, MoreHorizontal, XCircle, MessageSquare, UserPlus, ArrowRight, Tag, ChevronRight, X } from 'lucide-react';
+import { Filter, Search, Clock, CheckCircle2, AlertTriangle, MoreHorizontal, XCircle, MessageSquare, UserPlus, ArrowRight, Tag, ChevronRight, X, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn, formatDate } from '../lib/utils';
+import { cn, formatDate, exportToCSV } from '../lib/utils';
 
 const STATUS_LABELS = {
-  open: { label: 'Abierto', color: 'text-blue-600 bg-blue-50 border-blue-100', icon: Clock },
-  in_progress: { label: 'En Proceso', color: 'text-amber-600 bg-amber-50 border-amber-100', icon: AlertTriangle },
-  resolved: { label: 'Resuelto', color: 'text-emerald-600 bg-emerald-50 border-emerald-100', icon: CheckCircle2 },
-  closed: { label: 'Cerrado', color: 'text-slate-600 bg-slate-50 border-slate-100', icon: XCircle },
+  open: { label: 'Abierto', color: 'text-primary-700 bg-primary-50 border-primary-200', icon: Clock },
+  in_progress: { label: 'En Proceso', color: 'text-amber-700 bg-amber-50 border-amber-200', icon: AlertTriangle },
+  resolved: { label: 'Resuelto', color: 'text-emerald-700 bg-emerald-50 border-emerald-200', icon: CheckCircle2 },
+  closed: { label: 'Cerrado', color: 'text-slate-600 bg-slate-100 border-slate-200', icon: XCircle },
 };
 
 export default function Issues() {
@@ -26,12 +26,12 @@ export default function Issues() {
   useEffect(() => {
     if (!profile) return;
 
-    let q = query(collection(db, 'issues'), orderBy('createdAt', 'desc'));
+    let q = query(collection(db, 'issues'), where('guildId', '==', profile.guildId));
     
     if (filter === 'mine') {
-      q = query(collection(db, 'issues'), where('userId', '==', profile.uid), orderBy('createdAt', 'desc'));
+      q = query(collection(db, 'issues'), where('guildId', '==', profile.guildId), where('userId', '==', profile.uid));
     } else if (filter === 'assigned') {
-      q = query(collection(db, 'issues'), where('assignedTo', '==', profile.uid), orderBy('createdAt', 'desc'));
+      q = query(collection(db, 'issues'), where('guildId', '==', profile.guildId), where('assignedTo', '==', profile.uid));
     } else if (!isAdmin) {
       // Users only see theirs or what's assigned to them? 
       // For now, let's keep it open or limited based on the user's role.
@@ -43,6 +43,14 @@ export default function Issues() {
         id: doc.id,
         ...doc.data()
       })) as Issue[];
+      
+      // Sort client-side to avoid manual Composite Index creation
+      issuesList.sort((a, b) => {
+        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+        return timeB - timeA;
+      });
+      
       setIssues(issuesList);
       setLoading(false);
     }, (err) => {
@@ -62,23 +70,31 @@ export default function Issues() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tight">Reportes Azeroth</h1>
-          <p className="text-slate-500 font-medium">Control centralizado de incidencias y soluciones.</p>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight">Registro de Incidencias</h1>
+          <p className="text-slate-500 font-medium">Historial y seguimiento de problemas de la operación.</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          <button 
+            onClick={() => exportToCSV(filteredIssues, 'incidencias_ops')}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white text-slate-700 rounded-xl border border-slate-200 hover:bg-slate-50 transition-all font-black uppercase text-xs tracking-widest shadow-sm"
+          >
+            <Download className="w-4 h-4" />
+            Descargar CSV
+          </button>
+          
           <div className="flex bg-white rounded-2xl border border-slate-200 p-1 shadow-sm">
-            <button onClick={() => setFilter('all')} className={cn("px-4 py-2 text-xs font-bold rounded-xl transition-all", filter === 'all' ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-50")}>Todas</button>
-            <button onClick={() => setFilter('mine')} className={cn("px-4 py-2 text-xs font-bold rounded-xl transition-all", filter === 'mine' ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-50")}>Mis Reportes</button>
-            <button onClick={() => setFilter('assigned')} className={cn("px-4 py-2 text-xs font-bold rounded-xl transition-all", filter === 'assigned' ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-50")}>Asignados</button>
+            <button onClick={() => setFilter('all')} className={cn("px-4 py-2 text-xs font-bold rounded-xl transition-all uppercase tracking-widest", filter === 'all' ? "bg-primary-600 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900")}>Todas</button>
+            <button onClick={() => setFilter('mine')} className={cn("px-4 py-2 text-xs font-bold rounded-xl transition-all uppercase tracking-widest", filter === 'mine' ? "bg-primary-600 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900")}>Mis Reportes</button>
+            <button onClick={() => setFilter('assigned')} className={cn("px-4 py-2 text-xs font-bold rounded-xl transition-all uppercase tracking-widest", filter === 'assigned' ? "bg-primary-600 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900")}>Asignadas</button>
           </div>
           
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Filtro rápido..."
-              className="pl-12 pr-4 py-2.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none w-full md:w-64 transition-all shadow-sm font-medium"
+              placeholder="Buscar reporte..."
+              className="pl-12 pr-4 py-2.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-primary-500 text-slate-900 outline-none w-full md:w-64 transition-all shadow-sm font-medium placeholder:text-slate-400"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
             />
@@ -96,10 +112,10 @@ export default function Issues() {
             <IssueCard key={issue.id} issue={issue} onClick={() => setSelectedIssue(issue)} />
           ))
         ) : (
-          <div className="bg-white rounded-3xl border border-dashed border-slate-200 p-20 text-center">
-            <Filter className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+          <div className="bg-slate-50 rounded-3xl border border-dashed border-slate-200 p-20 text-center">
+            <Filter className="w-12 h-12 text-slate-300 mx-auto mb-4" />
             <h3 className="text-xl font-bold text-slate-900">Sin resultados</h3>
-            <p className="text-slate-400">No hay incidencias que coincidan con tu búsqueda.</p>
+            <p className="text-slate-500">No hay incidencias que coincidan con tu búsqueda.</p>
           </div>
         )}
       </div>
@@ -126,19 +142,19 @@ function IssueCard({ issue, onClick }: { issue: Issue, onClick: () => void }) {
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -2 }}
       onClick={onClick}
-      className="group bg-white rounded-3xl border border-slate-100 p-6 flex flex-col md:flex-row gap-6 hover:border-blue-400 hover:shadow-2xl hover:shadow-blue-500/10 transition-all cursor-pointer relative overflow-hidden"
+      className="group bg-white rounded-3xl border border-slate-100 p-6 flex flex-col md:flex-row gap-6 hover:border-primary-200 hover:shadow-xl hover:shadow-primary-900/5 transition-all cursor-pointer relative overflow-hidden"
     >
       <div className={cn("absolute left-0 top-0 bottom-0 w-1.5", 
         issue.priority === 'critical' ? 'bg-red-500' :
         issue.priority === 'high' ? 'bg-orange-500' :
-        issue.priority === 'medium' ? 'bg-blue-500' : 'bg-slate-300'
+        issue.priority === 'medium' ? 'bg-amber-400' : 'bg-slate-300'
       )} />
 
       <div className="flex-1 space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
-              <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{issue.areaName}</span>
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{issue.areaName}</span>
               <div className={cn(
                 "flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border",
                 status.color
@@ -147,7 +163,7 @@ function IssueCard({ issue, onClick }: { issue: Issue, onClick: () => void }) {
                 {status.label}
               </div>
             </div>
-            <h3 className="text-xl font-black text-slate-900 group-hover:text-blue-600 transition-colors uppercase leading-none">{issue.title}</h3>
+            <h3 className="text-xl font-black text-slate-900 group-hover:text-primary-600 transition-colors uppercase leading-none">{issue.title}</h3>
           </div>
           <div className="text-right">
              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter block">{formatDate(issue.createdAt)}</span>
@@ -159,9 +175,9 @@ function IssueCard({ issue, onClick }: { issue: Issue, onClick: () => void }) {
         </p>
 
         <div className="flex flex-wrap items-center gap-4 pt-2">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-xl">
-             <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-black">{issue.userName?.charAt(0)}</div>
-             <span className="text-xs font-bold text-slate-700">{issue.userName}</span>
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-100">
+             <div className="w-5 h-5 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center text-[10px] font-black">{issue.userName?.charAt(0)}</div>
+             <span className="text-xs font-bold text-slate-600">{issue.userName}</span>
           </div>
           {issue.assignedToName && (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 rounded-xl border border-emerald-100">
@@ -173,7 +189,7 @@ function IssueCard({ issue, onClick }: { issue: Issue, onClick: () => void }) {
       </div>
       
       <div className="flex items-center justify-center p-4">
-        <ChevronRight className="w-6 h-6 text-slate-300 group-hover:text-blue-500 transition-colors" />
+        <ChevronRight className="w-6 h-6 text-slate-300 group-hover:text-primary-500 transition-colors" />
       </div>
     </motion.div>
   );
@@ -239,7 +255,7 @@ function IssueDetailModal({ issue, onClose }: { issue: Issue, onClose: () => voi
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-10">
       <motion.div 
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
         onClick={onClose}
       />
       
@@ -259,9 +275,9 @@ function IssueDetailModal({ issue, onClose }: { issue: Issue, onClose: () => voi
               {isAdmin && issue.status !== 'resolved' && (
                 <button 
                   onClick={() => handleStatusChange('resolved')}
-                  className="px-6 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-all"
+                  className="px-6 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-all uppercase tracking-widest"
                 >
-                  Marcar como Resuelto
+                  Confirmar Resolución
                 </button>
               )}
             </div>
@@ -270,9 +286,9 @@ function IssueDetailModal({ issue, onClose }: { issue: Issue, onClose: () => voi
           <div className="space-y-8">
             <div className="space-y-2">
                <div className="flex items-center gap-3">
-                 <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">{issue.areaName}</span>
+                 <span className="text-[10px] font-black text-primary-600 uppercase tracking-[0.2em]">{issue.areaName}</span>
                  <span className="text-xs font-bold text-slate-300">•</span>
-                 <span className="text-xs font-bold text-slate-400">{formatDate(issue.createdAt)}</span>
+                 <span className="text-xs font-bold text-slate-500">{formatDate(issue.createdAt)}</span>
                </div>
                <h2 className="text-4xl font-black text-slate-900 leading-tight uppercase">{issue.title}</h2>
             </div>
@@ -280,25 +296,25 @@ function IssueDetailModal({ issue, onClose }: { issue: Issue, onClose: () => voi
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                <InfoTile label="Prioridad" value={issue.priority} color={issue.priority === 'critical' ? 'red' : 'blue'} />
                <InfoTile label="Estado" value={issue.status} color="slate" />
-               <InfoTile label="Reportado por" value={issue.userName} color="slate" />
+               <InfoTile label="Reportó" value={issue.userName} color="slate" />
                <InfoTile label="ID" value={`#${issue.id.slice(-6).toUpperCase()}`} color="slate" />
             </div>
 
             <div className="space-y-4">
               <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest border-b border-slate-100 pb-2 flex items-center gap-2">
-                <Tag className="w-4 h-4 text-blue-500" />
-                Descripción Detallada
+                <Tag className="w-4 h-4 text-primary-500" />
+                Descripción del Problema
               </h4>
-              <p className="text-slate-600 font-medium leading-relaxed bg-slate-50 p-6 rounded-3xl italic">
+              <p className="text-slate-700 font-medium leading-relaxed bg-slate-50 border border-slate-100 p-6 rounded-3xl italic">
                 "{issue.description}"
               </p>
             </div>
             
             {issue.status === 'resolved' && (
               <div className="space-y-4">
-                <h4 className="text-sm font-black text-emerald-600 uppercase tracking-widest border-b border-emerald-100 pb-2">Plan de Resolución</h4>
-                <div className="bg-emerald-50 p-6 rounded-3xl border border-emerald-100 italic font-medium text-emerald-800">
-                  {issue.resolution || 'No hay notas de resolución específicas.'}
+                <h4 className="text-sm font-black text-emerald-600 uppercase tracking-widest border-b border-emerald-100 pb-2">Resolución</h4>
+                <div className="bg-emerald-50 p-6 rounded-3xl border border-emerald-100 italic font-medium text-emerald-700">
+                  {issue.resolution || 'Incidencia resuelta sin comentarios adicionales.'}
                 </div>
               </div>
             )}
@@ -307,10 +323,10 @@ function IssueDetailModal({ issue, onClose }: { issue: Issue, onClose: () => voi
 
         {/* Right Side: Timeline & Comments */}
         <div className="w-full md:w-[400px] bg-slate-50 border-l border-slate-100 flex flex-col h-full">
-          <div className="p-8 border-b border-slate-200">
+          <div className="p-8 border-b border-slate-100">
              <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-               <MessageSquare className="w-4 h-4 text-blue-500" />
-               Timeline de Actividad
+               <MessageSquare className="w-4 h-4 text-primary-500" />
+               Registro de Actividad
              </h4>
           </div>
 
@@ -318,7 +334,7 @@ function IssueDetailModal({ issue, onClose }: { issue: Issue, onClose: () => voi
             {events.map((event) => (
               <div key={event.id} className="relative pl-10 space-y-1">
                 <div className="absolute left-0 top-1 w-6 h-6 rounded-full bg-white border-2 border-slate-200 flex items-center justify-center z-10">
-                   {event.type === 'comment' ? <MessageSquare className="w-3 h-3 text-blue-500" /> : <ChevronRight className="w-3 h-3 text-slate-400" />}
+                   {event.type === 'comment' ? <MessageSquare className="w-3 h-3 text-primary-500" /> : <ChevronRight className="w-3 h-3 text-slate-400" />}
                 </div>
                 <div className="absolute left-[11px] top-6 bottom-[-24px] w-0.5 bg-slate-200 last:hidden" />
                 
@@ -327,7 +343,7 @@ function IssueDetailModal({ issue, onClose }: { issue: Issue, onClose: () => voi
                 </p>
                 <div className={cn(
                   "p-4 rounded-2xl text-sm font-medium",
-                  event.type === 'comment' ? "bg-white shadow-sm text-slate-700" : "bg-blue-50/50 text-blue-700 italic text-xs"
+                  event.type === 'comment' ? "bg-white shadow-sm text-slate-700 border border-slate-100" : "bg-primary-50 text-primary-700 italic text-xs border border-primary-100"
                 )}>
                   {event.content}
                 </div>
@@ -335,18 +351,18 @@ function IssueDetailModal({ issue, onClose }: { issue: Issue, onClose: () => voi
             ))}
           </div>
 
-          <div className="p-8 bg-white border-t border-slate-200">
+          <div className="p-8 bg-white border-t border-slate-100">
             <div className="relative">
               <textarea
-                placeholder="Escribe un comentario o actualización..."
-                className="w-full pl-4 pr-12 py-4 bg-slate-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none min-h-[100px]"
+                placeholder="Añadir comentario..."
+                className="w-full pl-4 pr-12 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:ring-2 focus:ring-primary-500 outline-none transition-all resize-none min-h-[100px] placeholder:text-slate-400"
                 value={comment}
                 onChange={e => setComment(e.target.value)}
               />
               <button 
                 onClick={handlePostComment}
                 disabled={isSubmitting || !comment.trim()}
-                className="absolute right-3 bottom-3 p-3 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all disabled:opacity-50"
+                className="absolute right-3 bottom-3 p-3 bg-primary-600 text-white rounded-xl shadow-lg shadow-primary-200 hover:bg-primary-700 transition-all disabled:opacity-50"
               >
                 <ArrowRight className="w-4 h-4" />
               </button>
@@ -358,15 +374,16 @@ function IssueDetailModal({ issue, onClose }: { issue: Issue, onClose: () => voi
   );
 }
 
-function InfoTile({ label, value, color }: { label: string, value: string, color: 'blue' | 'red' | 'slate' }) {
+function InfoTile({ label, value, color }: { label: string, value: string, color: 'blue' | 'red' | 'slate' | 'amber' }) {
   const colors = {
-    blue: 'text-blue-600 bg-blue-50',
-    red: 'text-red-600 bg-red-50',
-    slate: 'text-slate-600 bg-slate-50'
+    blue: 'text-primary-700 bg-primary-50 border border-primary-200',
+    red: 'text-red-700 bg-red-50 border border-red-200',
+    slate: 'text-slate-600 bg-slate-50 border border-slate-200',
+    amber: 'text-amber-700 bg-amber-50 border border-amber-200'
   };
   return (
     <div className="space-y-1">
-      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
+      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{label}</p>
       <p className={cn("px-3 py-1.5 rounded-xl font-bold text-xs inline-block capitalize", colors[color])}>
         {value}
       </p>

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { onAuthStateChanged, User, signOut, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { UserProfile, UserRole } from './types';
 
@@ -9,8 +9,7 @@ interface AuthContextType {
   profile: UserProfile | null;
   loading: boolean;
   isAdmin: boolean;
-  login: (email: string, pass: string) => Promise<void>;
-  signup: (email: string, pass: string, name: string) => Promise<void>;
+  loginWithGoogle: (isSignup: boolean, providedGuildId?: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -43,27 +42,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const login = async (email: string, pass: string) => {
-    await signInWithEmailAndPassword(auth, email, pass);
-  };
+  // Listen for guild settings to apply theme color
+  useEffect(() => {
+    if (!profile?.guildId) {
+      document.body.className = 'font-sans text-slate-900 bg-slate-50 theme-blue';
+      return;
+    }
+    const unsub = onSnapshot(doc(db, 'settings', profile.guildId), (docSnap) => {
+      const themeColor = docSnap.exists() ? (docSnap.data()?.themeColor || 'blue') : 'blue';
+      document.body.className = `font-sans text-slate-900 bg-slate-50 theme-${themeColor}`;
+    });
+    return () => unsub();
+  }, [profile?.guildId]);
 
-  const signup = async (email: string, pass: string, name: string) => {
-    const cred = await createUserWithEmailAndPassword(auth, email, pass);
-    await updateProfile(cred.user, { displayName: name });
+  const loginWithGoogle = async (isSignup: boolean, providedGuildId?: string) => {
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    const cred = await signInWithPopup(auth, provider);
     
-    // Create new user profile
-    const isInitialAdmin = email === 'koferosgroup@gmail.com'; 
     const userRef = doc(db, 'users', cred.user.uid);
-    const newProfile: UserProfile = {
-      uid: cred.user.uid,
-      displayName: name,
-      email: email,
-      photoURL: null,
-      role: isInitialAdmin ? 'admin' : 'user',
-      createdAt: new Date().toISOString()
-    };
-    await setDoc(userRef, newProfile);
-    setProfile(newProfile);
+    const userDoc = await getDoc(userRef);
+    
+    if (userDoc.exists()) {
+      setProfile(userDoc.data() as UserProfile);
+    } else {
+      if (!isSignup) {
+        await signOut(auth);
+        throw new Error('No se encontró una cuenta asociada a este correo. Por favor, únete primero con un Código de Franquicia.');
+      }
+      
+      const cleanGuildId = providedGuildId?.trim().toUpperCase();
+      if (!cleanGuildId) {
+         await signOut(auth);
+         throw new Error('Se requiere un Código de Franquicia válido.');
+      }
+      
+      const { getDocs, query, collection, where, limit } = await import('firebase/firestore');
+      const existingUsers = await getDocs(query(collection(db, 'users'), where('guildId', '==', cleanGuildId), limit(1)));
+      
+      const isFirstInGuild = existingUsers.empty;
+      const isOwnerByEmail = cred.user.email === 'koferosgroup@gmail.com';
+      
+      const newProfile: UserProfile = {
+        uid: cred.user.uid,
+        displayName: cred.user.displayName || 'Usuario',
+        email: cred.user.email || '',
+        photoURL: cred.user.photoURL || null,
+        guildId: cleanGuildId,
+        role: (isFirstInGuild || isOwnerByEmail) ? 'admin' : 'user',
+        createdAt: new Date().toISOString()
+      };
+      await setDoc(userRef, newProfile);
+      setProfile(newProfile);
+    }
   };
 
   const logout = () => signOut(auth);
@@ -74,8 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profile, 
       loading, 
       isAdmin: profile?.role === 'admin',
-      login, 
-      signup,
+      loginWithGoogle,
       logout 
     }}>
       {children}
