@@ -1,0 +1,375 @@
+import React, { useEffect, useState } from 'react';
+import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, serverTimestamp, addDoc, getDocs } from 'firebase/firestore';
+import { db } from '../firebase';
+import { useAuth } from '../AuthContext';
+import { Issue, IssueEvent, IssueStatus, OperationType } from '../types';
+import { handleFirestoreError } from '../constants';
+import { Filter, Search, Clock, CheckCircle2, AlertTriangle, MoreHorizontal, XCircle, MessageSquare, UserPlus, ArrowRight, Tag, ChevronRight, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { cn, formatDate } from '../lib/utils';
+
+const STATUS_LABELS = {
+  open: { label: 'Abierto', color: 'text-blue-600 bg-blue-50 border-blue-100', icon: Clock },
+  in_progress: { label: 'En Proceso', color: 'text-amber-600 bg-amber-50 border-amber-100', icon: AlertTriangle },
+  resolved: { label: 'Resuelto', color: 'text-emerald-600 bg-emerald-50 border-emerald-100', icon: CheckCircle2 },
+  closed: { label: 'Cerrado', color: 'text-slate-600 bg-slate-50 border-slate-100', icon: XCircle },
+};
+
+export default function Issues() {
+  const { profile, isAdmin } = useAuth();
+  const [issues, setIssues] = useState<Issue[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'mine' | 'assigned'>('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
+
+  useEffect(() => {
+    if (!profile) return;
+
+    let q = query(collection(db, 'issues'), orderBy('createdAt', 'desc'));
+    
+    if (filter === 'mine') {
+      q = query(collection(db, 'issues'), where('userId', '==', profile.uid), orderBy('createdAt', 'desc'));
+    } else if (filter === 'assigned') {
+      q = query(collection(db, 'issues'), where('assignedTo', '==', profile.uid), orderBy('createdAt', 'desc'));
+    } else if (!isAdmin) {
+      // Users only see theirs or what's assigned to them? 
+      // For now, let's keep it open or limited based on the user's role.
+      // If not admin, they see everything but restricted actions.
+    }
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const issuesList = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Issue[];
+      setIssues(issuesList);
+      setLoading(false);
+    }, (err) => {
+      handleFirestoreError(err, OperationType.LIST, 'issues');
+    });
+
+    return () => unsubscribe();
+  }, [profile, isAdmin, filter]);
+
+  const filteredIssues = issues.filter(issue => 
+    issue.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    issue.areaName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    issue.userName.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight">Reportes Azeroth</h1>
+          <p className="text-slate-500 font-medium">Control centralizado de incidencias y soluciones.</p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex bg-white rounded-2xl border border-slate-200 p-1 shadow-sm">
+            <button onClick={() => setFilter('all')} className={cn("px-4 py-2 text-xs font-bold rounded-xl transition-all", filter === 'all' ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-50")}>Todas</button>
+            <button onClick={() => setFilter('mine')} className={cn("px-4 py-2 text-xs font-bold rounded-xl transition-all", filter === 'mine' ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-50")}>Mis Reportes</button>
+            <button onClick={() => setFilter('assigned')} className={cn("px-4 py-2 text-xs font-bold rounded-xl transition-all", filter === 'assigned' ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-50")}>Asignados</button>
+          </div>
+          
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Filtro rápido..."
+              className="pl-12 pr-4 py-2.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none w-full md:w-64 transition-all shadow-sm font-medium"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4">
+        {loading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-32 bg-white rounded-3xl border border-slate-100 animate-pulse" />
+          ))
+        ) : filteredIssues.length > 0 ? (
+          filteredIssues.map((issue) => (
+            <IssueCard key={issue.id} issue={issue} onClick={() => setSelectedIssue(issue)} />
+          ))
+        ) : (
+          <div className="bg-white rounded-3xl border border-dashed border-slate-200 p-20 text-center">
+            <Filter className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-slate-900">Sin resultados</h3>
+            <p className="text-slate-400">No hay incidencias que coincidan con tu búsqueda.</p>
+          </div>
+        )}
+      </div>
+
+      <AnimatePresence>
+        {selectedIssue && (
+          <IssueDetailModal 
+            issue={selectedIssue} 
+            onClose={() => setSelectedIssue(null)} 
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function IssueCard({ issue, onClick }: { issue: Issue, onClick: () => void }) {
+  const status = STATUS_LABELS[issue.status] || STATUS_LABELS.open;
+  const StatusIcon = status.icon;
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -2 }}
+      onClick={onClick}
+      className="group bg-white rounded-3xl border border-slate-100 p-6 flex flex-col md:flex-row gap-6 hover:border-blue-400 hover:shadow-2xl hover:shadow-blue-500/10 transition-all cursor-pointer relative overflow-hidden"
+    >
+      <div className={cn("absolute left-0 top-0 bottom-0 w-1.5", 
+        issue.priority === 'critical' ? 'bg-red-500' :
+        issue.priority === 'high' ? 'bg-orange-500' :
+        issue.priority === 'medium' ? 'bg-blue-500' : 'bg-slate-300'
+      )} />
+
+      <div className="flex-1 space-y-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{issue.areaName}</span>
+              <div className={cn(
+                "flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border",
+                status.color
+              )}>
+                <StatusIcon className="w-3 h-3" />
+                {status.label}
+              </div>
+            </div>
+            <h3 className="text-xl font-black text-slate-900 group-hover:text-blue-600 transition-colors uppercase leading-none">{issue.title}</h3>
+          </div>
+          <div className="text-right">
+             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter block">{formatDate(issue.createdAt)}</span>
+          </div>
+        </div>
+
+        <p className="text-slate-500 text-sm font-medium line-clamp-1 italic">
+          "{issue.description}"
+        </p>
+
+        <div className="flex flex-wrap items-center gap-4 pt-2">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-xl">
+             <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-black">{issue.userName?.charAt(0)}</div>
+             <span className="text-xs font-bold text-slate-700">{issue.userName}</span>
+          </div>
+          {issue.assignedToName && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 rounded-xl border border-emerald-100">
+               <UserPlus className="w-3.5 h-3.5 text-emerald-600" />
+               <span className="text-xs font-bold text-emerald-700">Asignado: {issue.assignedToName}</span>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      <div className="flex items-center justify-center p-4">
+        <ChevronRight className="w-6 h-6 text-slate-300 group-hover:text-blue-500 transition-colors" />
+      </div>
+    </motion.div>
+  );
+}
+
+function IssueDetailModal({ issue, onClose }: { issue: Issue, onClose: () => void }) {
+  const { profile, isAdmin } = useAuth();
+  const [events, setEvents] = useState<IssueEvent[]>([]);
+  const [comment, setComment] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const q = query(
+      collection(db, 'issues', issue.id, 'events'), 
+      orderBy('createdAt', 'asc')
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setEvents(snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as IssueEvent[]);
+    });
+    return () => unsubscribe();
+  }, [issue.id]);
+
+  const addEvent = async (type: IssueEvent['type'], content: string, extra = {}) => {
+    if (!profile) return;
+    await addDoc(collection(db, 'issues', issue.id, 'events'), {
+      issueId: issue.id,
+      type,
+      userId: profile.uid,
+      userName: profile.displayName,
+      content,
+      createdAt: new Date().toISOString(),
+      ...extra
+    });
+  };
+
+  const handlePostComment = async () => {
+    if (!comment.trim()) return;
+    setIsSubmitting(true);
+    try {
+      await addEvent('comment', comment);
+      setComment('');
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleStatusChange = async (newStatus: IssueStatus) => {
+    try {
+      const issueRef = doc(db, 'issues', issue.id);
+      await updateDoc(issueRef, { 
+        status: newStatus,
+        updatedAt: serverTimestamp()
+      });
+      await addEvent('status_change', `Cambió el estado a ${newStatus}`, { from: issue.status, to: newStatus });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-10">
+      <motion.div 
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        className="relative w-full max-w-5xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col md:flex-row h-[90vh]"
+      >
+        {/* Left Side: Content */}
+        <div className="flex-1 p-10 overflow-y-auto custom-scrollbar">
+          <div className="flex items-center justify-between mb-8">
+            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+              <X className="w-6 h-6 text-slate-400" />
+            </button>
+            <div className="flex gap-2">
+              {isAdmin && issue.status !== 'resolved' && (
+                <button 
+                  onClick={() => handleStatusChange('resolved')}
+                  className="px-6 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-all"
+                >
+                  Marcar como Resuelto
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-8">
+            <div className="space-y-2">
+               <div className="flex items-center gap-3">
+                 <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">{issue.areaName}</span>
+                 <span className="text-xs font-bold text-slate-300">•</span>
+                 <span className="text-xs font-bold text-slate-400">{formatDate(issue.createdAt)}</span>
+               </div>
+               <h2 className="text-4xl font-black text-slate-900 leading-tight uppercase">{issue.title}</h2>
+            </div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+               <InfoTile label="Prioridad" value={issue.priority} color={issue.priority === 'critical' ? 'red' : 'blue'} />
+               <InfoTile label="Estado" value={issue.status} color="slate" />
+               <InfoTile label="Reportado por" value={issue.userName} color="slate" />
+               <InfoTile label="ID" value={`#${issue.id.slice(-6).toUpperCase()}`} color="slate" />
+            </div>
+
+            <div className="space-y-4">
+              <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest border-b border-slate-100 pb-2 flex items-center gap-2">
+                <Tag className="w-4 h-4 text-blue-500" />
+                Descripción Detallada
+              </h4>
+              <p className="text-slate-600 font-medium leading-relaxed bg-slate-50 p-6 rounded-3xl italic">
+                "{issue.description}"
+              </p>
+            </div>
+            
+            {issue.status === 'resolved' && (
+              <div className="space-y-4">
+                <h4 className="text-sm font-black text-emerald-600 uppercase tracking-widest border-b border-emerald-100 pb-2">Plan de Resolución</h4>
+                <div className="bg-emerald-50 p-6 rounded-3xl border border-emerald-100 italic font-medium text-emerald-800">
+                  {issue.resolution || 'No hay notas de resolución específicas.'}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Side: Timeline & Comments */}
+        <div className="w-full md:w-[400px] bg-slate-50 border-l border-slate-100 flex flex-col h-full">
+          <div className="p-8 border-b border-slate-200">
+             <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+               <MessageSquare className="w-4 h-4 text-blue-500" />
+               Timeline de Actividad
+             </h4>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]">
+            {events.map((event) => (
+              <div key={event.id} className="relative pl-10 space-y-1">
+                <div className="absolute left-0 top-1 w-6 h-6 rounded-full bg-white border-2 border-slate-200 flex items-center justify-center z-10">
+                   {event.type === 'comment' ? <MessageSquare className="w-3 h-3 text-blue-500" /> : <ChevronRight className="w-3 h-3 text-slate-400" />}
+                </div>
+                <div className="absolute left-[11px] top-6 bottom-[-24px] w-0.5 bg-slate-200 last:hidden" />
+                
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">
+                  {event.userName} • {formatDate(event.createdAt)}
+                </p>
+                <div className={cn(
+                  "p-4 rounded-2xl text-sm font-medium",
+                  event.type === 'comment' ? "bg-white shadow-sm text-slate-700" : "bg-blue-50/50 text-blue-700 italic text-xs"
+                )}>
+                  {event.content}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="p-8 bg-white border-t border-slate-200">
+            <div className="relative">
+              <textarea
+                placeholder="Escribe un comentario o actualización..."
+                className="w-full pl-4 pr-12 py-4 bg-slate-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none min-h-[100px]"
+                value={comment}
+                onChange={e => setComment(e.target.value)}
+              />
+              <button 
+                onClick={handlePostComment}
+                disabled={isSubmitting || !comment.trim()}
+                className="absolute right-3 bottom-3 p-3 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all disabled:opacity-50"
+              >
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function InfoTile({ label, value, color }: { label: string, value: string, color: 'blue' | 'red' | 'slate' }) {
+  const colors = {
+    blue: 'text-blue-600 bg-blue-50',
+    red: 'text-red-600 bg-red-50',
+    slate: 'text-slate-600 bg-slate-50'
+  };
+  return (
+    <div className="space-y-1">
+      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
+      <p className={cn("px-3 py-1.5 rounded-xl font-bold text-xs inline-block capitalize", colors[color])}>
+        {value}
+      </p>
+    </div>
+  );
+}

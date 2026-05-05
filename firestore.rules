@@ -1,0 +1,80 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() { return request.auth != null; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && getUserData().role == 'admin';
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // --- Collections ---
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && (isOwner(userId) || isAdmin());
+      // Only allow creation if the user is setting their own ID
+      allow create: if isSignedIn() && isOwner(userId);
+      // Users cannot update their own role
+      allow update: if isSignedIn() && isOwner(userId) && 
+                      incoming().role == existing().role;
+      allow list: if isAdmin();
+    }
+
+    match /areas/{areaId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    function isValidIssue(data) {
+      return data.title is string && data.title.size() <= 200 &&
+             data.areaId is string && data.areaId.size() <= 100 &&
+             data.priority in ['low', 'medium', 'high', 'critical'] &&
+             data.status in ['open', 'in_progress', 'resolved', 'closed'];
+    }
+
+    match /issues/{issueId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      
+      allow create: if isSignedIn() && 
+                      isValidIssue(incoming()) && 
+                      incoming().userId == request.auth.uid &&
+                      incoming().status == 'open' &&
+                      incoming().createdAt == request.time;
+      
+      allow update: if isSignedIn() && (
+        // Admin can update everything
+        isAdmin() ||
+        // Owner can update their own open issues
+        (isOwner(existing().userId) && existing().status == 'open' && 
+         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'areaId', 'areaName', 'priority', 'style', 'updatedAt']) &&
+         incoming().updatedAt == request.time)
+      );
+
+      allow delete: if isAdmin();
+
+      match /events/{eventId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() && 
+                       incoming().userId == request.auth.uid &&
+                       incoming().createdAt is string; // Simple check for now
+      }
+    }
+  }
+}
