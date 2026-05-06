@@ -7,6 +7,7 @@ import { handleFirestoreError } from '../constants';
 import { ShieldCheck, MessageSquare, ArrowRight, UserCheck, Search, Users, LayoutGrid, Trash2, Plus, Settings2, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, formatDate } from '../lib/utils';
+import DataConfig from '../components/DataConfig';
 
 export default function AdminPanel() {
   const { profile } = useAuth();
@@ -15,7 +16,7 @@ export default function AdminPanel() {
   const [areas, setAreas] = useState<Area[]>([]);
   const [guilds, setGuilds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'issues' | 'users' | 'areas' | 'settings' | 'guilds'>('issues');
+  const [activeTab, setActiveTab] = useState<'issues' | 'users' | 'areas' | 'settings' | 'guilds' | 'catalogs'>('issues');
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [resolutionText, setResolutionText] = useState('');
 
@@ -193,6 +194,7 @@ export default function AdminPanel() {
           <TabButton active={activeTab === 'issues'} onClick={() => setActiveTab('issues')} icon={Activity} label="Incidencias" />
           <TabButton active={activeTab === 'users'} onClick={() => setActiveTab('users')} icon={Users} label="Usuarios" />
           <TabButton active={activeTab === 'areas'} onClick={() => setActiveTab('areas')} icon={LayoutGrid} label="Divisiones" />
+          <TabButton active={activeTab === 'catalogs'} onClick={() => setActiveTab('catalogs')} icon={LayoutGrid} label="Catálogos" />
           <TabButton active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} icon={Settings2} label="Configuración" />
           {profile?.role === 'superadmin' && (
             <TabButton active={activeTab === 'guilds'} onClick={() => setActiveTab('guilds')} icon={ShieldCheck} label="Empresas" />
@@ -393,6 +395,44 @@ export default function AdminPanel() {
                 </div>
               ))}
             </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'catalogs' && (
+          <motion.div key="catalogs" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <DataConfig 
+                  collectionName="cities" 
+                  title="Ciudades / Sucursales" 
+                  fields={[ { name: 'name', label: 'Nombre' } ]} 
+                />
+                <DataConfig 
+                  collectionName="routes" 
+                  title="Rutas" 
+                  fields={[ { name: 'name', label: 'Nombre' } ]} 
+                  parentCollection={{ name: 'cities', localField: 'cityId', parentField: 'name', docNameField: 'Ciudad' }}
+                />
+                <DataConfig 
+                  collectionName="categories" 
+                  title="Categorías de Incidencias" 
+                  fields={[ { name: 'name', label: 'Nombre' } ]} 
+                />
+                <DataConfig 
+                  collectionName="motifs" 
+                  title="Motivos de Cambio" 
+                  fields={[ { name: 'name', label: 'Motivo' } ]} 
+                />
+                <div className="md:col-span-2">
+                  <DataConfig 
+                    collectionName="brands" 
+                    title="Marcas / Modelos de Equipos" 
+                    fields={[ 
+                      { name: 'name', label: 'Nombre/Modelo' },
+                      { name: 'type', label: 'Tipo de Equipo', type: 'select', options: [{value: 'Celular', label:'Celular'}, {value: 'Impresora Térmica', label:'Impresora Térmica'}, {value:'Otro', label:'Otro'}] } 
+                    ]} 
+                  />
+                </div>
+             </div>
           </motion.div>
         )}
 

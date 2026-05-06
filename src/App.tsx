@@ -12,6 +12,8 @@ import Dashboard from './pages/Dashboard';
 import Issues from './pages/Issues';
 import NewIssue from './pages/NewIssue';
 import AdminPanel from './pages/AdminPanel';
+import Exchanges from './pages/Exchanges';
+import NewExchange from './pages/NewExchange';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { profile, loading } = useAuth();
@@ -35,6 +37,8 @@ export default function App() {
             <Route index element={<Dashboard />} />
             <Route path="issues" element={<Issues />} />
             <Route path="new-issue" element={<NewIssue />} />
+            <Route path="exchanges" element={<Exchanges />} />
+            <Route path="new-exchange" element={<NewExchange />} />
             <Route path="admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
           </Route>
         </Routes>

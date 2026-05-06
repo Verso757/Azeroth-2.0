@@ -17,15 +17,21 @@ const STATUS_LABELS = {
   closed: { label: 'Cerrado', color: 'text-slate-600 bg-slate-100 border-slate-200', icon: XCircle },
 };
 
+const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
 export default function Issues() {
   const { profile, isAdmin } = useAuth();
   const [issues, setIssues] = useState<Issue[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'mine' | 'assigned'>('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [month, setMonth] = useState(new Date().getMonth());
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [week, setWeek] = useState('all');
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
+
+  const [guildFilt, setGuildFilt] = useState('all');
+  const [cityFilt, setCityFilt] = useState('all');
 
   useEffect(() => {
     if (!profile) return;
@@ -71,6 +77,11 @@ export default function Issues() {
     return () => unsubscribe();
   }, [profile, isAdmin, filter]);
 
+  const guildsList = Array.from(new Set(issues.map(i => i.guildId).filter(Boolean)));
+  const citiesList = Array.from(new Set(issues.filter(i => guildFilt === 'all' || i.guildId === guildFilt).map(i => ({ id: i.cityId, name: i.cityName })).filter(i => i.id)));
+  // Make citiesList unique by id
+  const uniqueCities = Array.from(new Map(citiesList.map((item: any) => [item.id, item])).values()) as {id: string | null, name: string | null}[];
+
   const filteredIssues = issues.filter(issue => {
     const matchesSearch = issue.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           issue.areaName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -78,18 +89,18 @@ export default function Issues() {
     
     if (!matchesSearch) return false;
 
+    if (guildFilt !== 'all' && issue.guildId !== guildFilt) return false;
+    if (cityFilt !== 'all' && issue.cityId !== cityFilt) return false;
+
     if (!issue.createdAt) return true;
     const date = issue.createdAt.toDate ? issue.createdAt.toDate() : new Date(issue.createdAt);
     
-    if (startDate) {
-      const startD = new Date(startDate);
-      startD.setHours(0, 0, 0, 0);
-      if (date < startD) return false;
-    }
-    if (endDate) {
-      const endD = new Date(endDate);
-      endD.setHours(23, 59, 59, 999);
-      if (date > endD) return false;
+    if (date.getMonth() !== month || date.getFullYear() !== year) return false;
+    
+    if (week !== 'all') {
+      const day = date.getDate();
+      const issueWeek = Math.min(5, Math.ceil(day / 7)).toString();
+      if (issueWeek !== week) return false;
     }
     
     return true;
@@ -240,53 +251,36 @@ export default function Issues() {
           <div className="flex bg-white rounded-2xl border border-slate-200 p-2 shadow-sm gap-2">
              <div className="flex items-center gap-2 px-2">
                <Clock className="w-4 h-4 text-slate-400" />
-               <input 
-                 type="date" 
-                 value={startDate}
-                 onChange={(e) => setStartDate(e.target.value)}
-                 className="text-xs font-bold text-slate-600 outline-none bg-transparent"
-               />
-             </div>
-             <span className="text-slate-300">-</span>
-             <div className="flex items-center gap-2 px-2">
-               <input 
-                 type="date" 
-                 value={endDate}
-                 onChange={(e) => setEndDate(e.target.value)}
-                 className="text-xs font-bold text-slate-600 outline-none bg-transparent"
-               />
-             </div>
-             {(startDate || endDate) && (
-               <button 
-                 onClick={() => { setStartDate(''); setEndDate(''); }}
-                 className="text-[10px] text-red-500 hover:text-red-700 font-bold px-2 uppercase"
+               <select 
+                 value={month} 
+                 onChange={e => setMonth(Number(e.target.value))}
+                 className="text-xs font-bold text-slate-600 outline-none bg-transparent p-1 cursor-pointer"
                >
-                 Limpiar
-               </button>
-             )}
-             <button 
-               onClick={() => { 
-                 const now = new Date();
-                 const day = now.getDay() || 7;
-                 const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1);
-                 setStartDate(start.toISOString().split('T')[0]);
-                 setEndDate(new Date().toISOString().split('T')[0]);
-               }}
-               className="text-[10px] text-blue-500 hover:text-blue-700 font-bold px-2 uppercase border-l border-slate-100"
-             >
-               Semana
-             </button>
-             <button 
-               onClick={() => { 
-                 const now = new Date();
-                 const start = new Date(now.getFullYear(), now.getMonth(), 1);
-                 setStartDate(start.toISOString().split('T')[0]);
-                 setEndDate(new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]);
-               }}
-               className="text-[10px] text-blue-500 hover:text-blue-700 font-bold px-2 uppercase border-l border-slate-100"
-             >
-               Mes
-             </button>
+                 {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
+               </select>
+             </div>
+             <span className="text-slate-300">|</span>
+             <select 
+                 value={year} 
+                 onChange={e => setYear(Number(e.target.value))}
+                 className="text-xs font-bold text-slate-600 outline-none bg-transparent p-1 cursor-pointer"
+               >
+                 <option value={new Date().getFullYear()}>{new Date().getFullYear()}</option>
+                 <option value={new Date().getFullYear() - 1}>{new Date().getFullYear() - 1}</option>
+             </select>
+             <span className="text-slate-300">|</span>
+             <select 
+                 value={week} 
+                 onChange={e => setWeek(e.target.value)}
+                 className="text-xs font-bold text-blue-600 outline-none bg-transparent p-1 cursor-pointer"
+               >
+                 <option value="all">Todas las semanas</option>
+                 <option value="1">Semana 1</option>
+                 <option value="2">Semana 2</option>
+                 <option value="3">Semana 3</option>
+                 <option value="4">Semana 4</option>
+                 <option value="5">Semana 5</option>
+             </select>
           </div>
 
           <div className="flex bg-white rounded-2xl border border-slate-200 p-1 shadow-sm gap-1">
@@ -312,6 +306,30 @@ export default function Issues() {
             <button onClick={() => setFilter('all')} className={cn("px-4 py-2 text-xs font-bold rounded-xl transition-all uppercase tracking-widest", filter === 'all' ? "bg-primary-600 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900")}>Todas</button>
             <button onClick={() => setFilter('mine')} className={cn("px-4 py-2 text-xs font-bold rounded-xl transition-all uppercase tracking-widest", filter === 'mine' ? "bg-primary-600 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900")}>Mis Reportes</button>
             <button onClick={() => setFilter('assigned')} className={cn("px-4 py-2 text-xs font-bold rounded-xl transition-all uppercase tracking-widest", filter === 'assigned' ? "bg-primary-600 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900")}>Asignadas</button>
+          </div>
+
+          {(profile?.role === 'superadmin' || (profile?.allowedGuilds && profile.allowedGuilds.length > 0)) && (
+            <div className="flex bg-white rounded-2xl border border-slate-200 p-1 shadow-sm">
+              <select 
+                  value={guildFilt} 
+                  onChange={e => { setGuildFilt(e.target.value); setCityFilt('all'); }}
+                  className="text-xs font-bold text-slate-600 outline-none bg-transparent px-2 py-1 cursor-pointer"
+                >
+                  <option value="all">Empresa: Todas</option>
+                  {guildsList.map(g => <option key={String(g)} value={String(g)}>{g}</option>)}
+              </select>
+            </div>
+          )}
+
+          <div className="flex bg-white rounded-2xl border border-slate-200 p-1 shadow-sm">
+            <select 
+                value={cityFilt} 
+                onChange={e => setCityFilt(e.target.value)}
+                className="text-xs font-bold text-slate-600 outline-none bg-transparent px-2 py-1 cursor-pointer w-auto"
+              >
+                <option value="all">Ciudad: Todas</option>
+                {uniqueCities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
           </div>
           
           <div className="relative">

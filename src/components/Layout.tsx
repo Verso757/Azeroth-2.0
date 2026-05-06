@@ -17,9 +17,10 @@ export default function Layout() {
   };
 
   const navItems = [
-    { name: 'Panel Principal', path: '/', icon: LayoutDashboard },
+    { name: 'Panel', path: '/', icon: LayoutDashboard },
     { name: 'Incidencias', path: '/issues', icon: ListTodo },
     { name: 'Nueva Incidencia', path: '/new-issue', icon: PlusCircle },
+    { name: 'Cambios', path: '/exchanges', icon: ListTodo }, // Can change icon later
   ];
 
   if (isAdmin) {

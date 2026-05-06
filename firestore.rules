@@ -46,7 +46,8 @@ service cloud.firestore {
       allow create: if isSignedIn() && isOwner(userId) && incoming().guildId is string;
       allow update: if isSignedIn() && (
         (isSuperAdmin()) ||
-        (isOwner(userId) && incoming().role == existing().role && incoming().guildId == existing().guildId)
+        (isOwner(userId) && incoming().role == existing().role && incoming().guildId == existing().guildId && incoming().allowedGuilds == existing().allowedGuilds) ||
+        (isAdmin() && getUserGuild() == existing().guildId) // Admin can update users in their guild
       );
       allow list: if isSignedIn() && (isSameGuild(resource.data.guildId) || (getUserData() == null && request.query.limit <= 1) || isSuperAdmin());
     }
@@ -59,6 +60,50 @@ service cloud.firestore {
     match /areas/{areaId} {
       allow read: if isSignedIn() && isSameGuild(resource.data.guildId);
       allow create: if isAdmin() && incoming().guildId == getUserGuild();
+      allow update: if isAdmin() && isSameGuild(existing().guildId) && incoming().guildId == existing().guildId;
+      allow delete: if isAdmin() && isSameGuild(existing().guildId);
+    }
+
+    match /cities/{cityId} {
+      allow read: if isSignedIn() && isSameGuild(resource.data.guildId);
+      allow create: if isAdmin() && incoming().guildId == getUserGuild();
+      allow update: if isAdmin() && isSameGuild(existing().guildId) && incoming().guildId == existing().guildId;
+      allow delete: if isAdmin() && isSameGuild(existing().guildId);
+    }
+
+    match /routes/{routeId} {
+      // Routes belong to cities, so we check if the city belongs to the user's guild
+      allow read: if isSignedIn() && isSameGuild(get(/databases/$(database)/documents/cities/$(resource.data.cityId)).data.guildId);
+      allow create: if isAdmin() && isSameGuild(get(/databases/$(database)/documents/cities/$(incoming().cityId)).data.guildId);
+      allow update: if isAdmin() && isSameGuild(get(/databases/$(database)/documents/cities/$(existing().cityId)).data.guildId) && incoming().cityId == existing().cityId;
+      allow delete: if isAdmin() && isSameGuild(get(/databases/$(database)/documents/cities/$(existing().cityId)).data.guildId);
+    }
+
+    match /categories/{categoryId} {
+      allow read: if isSignedIn() && isSameGuild(resource.data.guildId);
+      allow create: if isAdmin() && incoming().guildId == getUserGuild();
+      allow update: if isAdmin() && isSameGuild(existing().guildId) && incoming().guildId == existing().guildId;
+      allow delete: if isAdmin() && isSameGuild(existing().guildId);
+    }
+
+    match /brands/{brandId} {
+      allow read: if isSignedIn() && isSameGuild(resource.data.guildId);
+      allow create: if isAdmin() && incoming().guildId == getUserGuild();
+      allow update: if isAdmin() && isSameGuild(existing().guildId) && incoming().guildId == existing().guildId;
+      allow delete: if isAdmin() && isSameGuild(existing().guildId);
+    }
+
+    match /motifs/{motifId} {
+      allow read: if isSignedIn() && isSameGuild(resource.data.guildId);
+      allow create: if isAdmin() && incoming().guildId == getUserGuild();
+      allow update: if isAdmin() && isSameGuild(existing().guildId) && incoming().guildId == existing().guildId;
+      allow delete: if isAdmin() && isSameGuild(existing().guildId);
+    }
+
+    match /equipment_exchanges/{exchangeId} {
+      allow get: if isSignedIn() && isSameGuild(existing().guildId);
+      allow list: if isSignedIn() && isSameGuild(resource.data.guildId);
+      allow create: if isSignedIn() && incoming().guildId == getUserGuild() && incoming().userId == request.auth.uid;
       allow update: if isAdmin() && isSameGuild(existing().guildId) && incoming().guildId == existing().guildId;
       allow delete: if isAdmin() && isSameGuild(existing().guildId);
     }
@@ -94,7 +139,7 @@ service cloud.firestore {
          incoming().affectedPeople is list &&
          incoming().updatedAt == request.time) ||
         (isOwner(existing().userId) && existing().status == 'open' && 
-         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'areaId', 'areaName', 'priority', 'style', 'updatedAt']) &&
+         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'areaId', 'areaName', 'categoryId', 'categoryName', 'cityId', 'cityName', 'priority', 'style', 'updatedAt']) &&
          incoming().updatedAt == request.time)
       );
 

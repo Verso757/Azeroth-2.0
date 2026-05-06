@@ -8,6 +8,7 @@ export interface UserProfile {
   role: UserRole;
   guildId: string;
   allowedGuilds?: string[];
+  cityIds?: string[];
   createdAt: any;
 }
 
@@ -17,6 +18,10 @@ export type IssueStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
 export interface Issue {
   id: string;
   guildId: string;
+  cityId?: string;
+  cityName?: string;
+  categoryId?: string;
+  categoryName?: string;
   title: string;
   description: string;
   areaId: string;
@@ -51,6 +56,60 @@ export interface IssueEvent {
   from?: string;
   to?: string;
   createdAt: string;
+}
+
+export interface City {
+  id: string;
+  guildId: string;
+  name: string;
+}
+
+export interface Route {
+  id: string;
+  cityId: string;
+  name: string;
+}
+
+export interface Category {
+  id: string;
+  guildId: string;
+  name: string;
+}
+
+export interface Brand {
+  id: string;
+  guildId: string;
+  name: string;
+  type: string; // 'Celular', 'Impresora Térmica', etc.
+}
+
+export interface Motif {
+  id: string;
+  guildId: string;
+  name: string;
+}
+
+export interface EquipmentExchange {
+  id: string;
+  guildId: string;
+  cityId: string;
+  cityName: string;
+  routeId: string;
+  routeName: string;
+  equipmentType: string; // 'Celular', 'Impresora Térmica'
+  brandId: string;
+  brandName: string;
+  motifId: string;
+  motifName: string;
+  oldEquipment: string;
+  newEquipment: string;
+  price?: number;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  affectedPerson: string;
+  createdAt: any;
+  updatedAt: any;
 }
 
 export interface Guild {
