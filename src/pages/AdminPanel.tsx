@@ -4,10 +4,11 @@ import { db } from '../firebase';
 import { useAuth } from '../AuthContext';
 import { Issue, OperationType, UserProfile, Area } from '../types';
 import { handleFirestoreError } from '../constants';
-import { ShieldCheck, MessageSquare, ArrowRight, UserCheck, Search, Users, LayoutGrid, Trash2, Plus, Settings2, Activity } from 'lucide-react';
+import { ShieldCheck, MessageSquare, ArrowRight, UserCheck, Search, Users, LayoutGrid, Trash2, Plus, Settings2, Activity, Sparkles, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, formatDate } from '../lib/utils';
 import DataConfig from '../components/DataConfig';
+import { suggestResolution } from '../services/aiService';
 
 export default function AdminPanel() {
   const { profile } = useAuth();
@@ -221,7 +222,7 @@ export default function AdminPanel() {
           <p className="text-slate-500 font-medium text-sm">Gestión administrativa de la plataforma.</p>
         </div>
         
-        <div className="flex flex-wrap bg-white rounded-2xl border border-slate-200 p-1 shadow-sm gap-1 self-stretch lg:self-auto w-full lg:w-auto">
+        <div className="flex flex-wrap bg-white rounded-2xl border border-slate-200 p-1 shadow-sm gap-1 w-full lg:w-auto mt-4 lg:mt-0">
           <TabButton active={activeTab === 'issues'} onClick={() => setActiveTab('issues')} icon={Activity} label="Incidencias" />
           <TabButton active={activeTab === 'users'} onClick={() => setActiveTab('users')} icon={Users} label="Usuarios" />
           <TabButton active={activeTab === 'areas'} onClick={() => setActiveTab('areas')} icon={LayoutGrid} label="Divisiones" />
@@ -431,7 +432,7 @@ export default function AdminPanel() {
 
         {activeTab === 'catalogs' && (
           <motion.div key="catalogs" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 <DataConfig 
                   collectionName="cities" 
                   title="Ciudades / Sucursales" 
@@ -457,7 +458,7 @@ export default function AdminPanel() {
                   fields={[ { name: 'name', label: 'Motivo' } ]} 
                   selectedGuild={selectedAdminGuild}
                 />
-                <div className="md:col-span-2">
+                <div className="md:col-span-2 xl:col-span-1">
                   <DataConfig 
                     collectionName="brands" 
                     title="Marcas / Modelos de Equipos" 
@@ -519,17 +520,31 @@ function TabButton({ active, onClick, icon: Icon, label }: any) {
     <button
       onClick={onClick}
       className={cn(
-        "flex-1 lg:flex-none flex justify-center items-center gap-2 px-4 md:px-5 py-2 md:py-2.5 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest transition-all",
+        "flex-none flex justify-center items-center gap-2 px-4 py-2 md:py-2.5 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap",
         active ? "bg-primary-600 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
       )}
     >
-      <Icon className="w-3.5 h-3.5 md:w-4 md:h-4" />
-      <span className="hidden sm:inline">{label}</span>
+      <Icon className="w-3.5 h-3.5 md:w-4 md:h-4 shrink-0" />
+      <span className="">{label}</span>
     </button>
   );
 }
 
 function AdminIssueCard({ issue, resolvingId, setResolvingId, resolutionText, setResolutionText, onResolve }: any) {
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+
+  const handleAI = async () => {
+    setIsGeneratingAI(true);
+    try {
+      const suggestion = await suggestResolution(issue.title, issue.description, issue.areaName, issue.categoryName || '');
+      setResolutionText(suggestion);
+    } catch (err) {
+      console.error(err);
+      alert('Error contactando a la IA');
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
   return (
      <div className="bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-sm relative overflow-hidden">
         <div className="flex flex-col lg:flex-row gap-10">
@@ -572,9 +587,17 @@ function AdminIssueCard({ issue, resolvingId, setResolvingId, resolutionText, se
                     value={resolutionText}
                     onChange={e => setResolutionText(e.target.value)}
                   />
-                  <div className="flex gap-2">
-                    <button onClick={() => setResolvingId(null)} className="flex-1 py-4 text-xs font-black text-slate-500 hover:text-slate-900 uppercase">Cancelar</button>
-                    <button onClick={onResolve} className="flex-[2] py-4 bg-primary-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-primary-600/20 hover:bg-primary-700 transition-all flex items-center justify-center gap-2">
+                  <div className="flex gap-2 items-center">
+                    <button
+                      onClick={handleAI}
+                      disabled={isGeneratingAI}
+                      className="flex-1 py-4 text-[10px] font-black text-primary-600 hover:bg-primary-50 uppercase tracking-widest rounded-2xl flex items-center justify-center gap-2 transition-all border border-primary-200 disabled:opacity-50"
+                    >
+                      {isGeneratingAI ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                      {isGeneratingAI ? 'Generando...' : 'IA'}
+                    </button>
+                    <button onClick={() => setResolvingId(null)} className="flex-1 py-4 text-[10px] font-black text-slate-500 hover:text-slate-900 uppercase">Cancelar</button>
+                    <button onClick={onResolve} className="flex-[2] py-4 bg-primary-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-primary-600/20 hover:bg-primary-700 transition-all flex items-center justify-center gap-2">
                        <ArrowRight className="w-4 h-4" />
                        Cerrar Caso
                     </button>

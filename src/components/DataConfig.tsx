@@ -4,7 +4,8 @@ import { db } from '../firebase';
 import { useAuth } from '../AuthContext';
 import { OperationType } from '../types';
 import { handleFirestoreError } from '../constants';
-import { Plus, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Loader2, Sparkles, X } from 'lucide-react';
+import { suggestCatalogItems } from '../services/aiService';
 
 interface DataConfigProps {
   collectionName: string;
@@ -21,6 +22,11 @@ export default function DataConfig({ collectionName, title, fields = [], parentC
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [newItem, setNewItem] = useState<Record<string, string>>({});
+  
+  const [showAI, setShowAI] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
 
   useEffect(() => {
     if (!profile) return;
@@ -72,6 +78,27 @@ export default function DataConfig({ collectionName, title, fields = [], parentC
     }
   };
 
+  const handleAIGenerate = async () => {
+    setIsGenerating(true);
+    setAiSuggestions([]);
+    try {
+      const existing = data.map(d => d.name).filter(Boolean);
+      const items = await suggestCatalogItems(title, existing, aiPrompt);
+      setAiSuggestions(items);
+    } catch (e) {
+      console.error(e);
+      alert('Error contactando a la IA');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const applySuggestion = (sug: string) => {
+    setNewItem(prev => ({ ...prev, name: sug }));
+    setShowAI(false);
+    setAiPrompt('');
+  };
+
   const handleDelete = async (id: string) => {
     if (!window.confirm('¿Seguro que deseas eliminar este registro?')) return;
     try {
@@ -82,8 +109,53 @@ export default function DataConfig({ collectionName, title, fields = [], parentC
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 md:p-5 overflow-hidden">
-      <h3 className="text-sm font-black uppercase text-slate-800 mb-3 tracking-tight">{title}</h3>
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 md:p-5 overflow-hidden relative">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-black uppercase text-slate-800 tracking-tight">{title}</h3>
+        <button 
+          onClick={() => setShowAI(!showAI)}
+          className={`p-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${showAI ? 'bg-primary-100 text-primary-700' : 'text-slate-400 hover:bg-slate-50 hover:text-primary-600'}`}
+          title="Asistente IA"
+        >
+          <Sparkles className="w-4 h-4" />
+          <span className="text-[10px] font-bold uppercase tracking-widest hidden sm:inline">IA</span>
+        </button>
+      </div>
+
+      {showAI && (
+        <div className="mb-4 bg-primary-50 rounded-xl p-3 border border-primary-100">
+           <div className="flex items-center gap-2 mb-2">
+             <input 
+               type="text" 
+               placeholder="Ej: Dame 5 opciones comunes" 
+               className="flex-1 bg-white border border-primary-200 rounded-lg px-3 py-1.5 text-xs font-bold text-primary-900 outline-none focus:border-primary-500 placeholder:text-primary-300"
+               value={aiPrompt}
+               onChange={e => setAiPrompt(e.target.value)}
+             />
+             <button 
+               onClick={handleAIGenerate}
+               disabled={isGenerating}
+               className="bg-primary-600 hover:bg-primary-700 text-white px-3 py-1.5 rounded-lg text-xs font-black uppercase transition-colors shrink-0 flex items-center justify-center min-w-[80px]"
+             >
+               {isGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Generar'}
+             </button>
+           </div>
+           
+           {aiSuggestions.length > 0 && (
+             <div className="flex flex-wrap gap-1.5 mt-2">
+               {aiSuggestions.map((sug, i) => (
+                 <button 
+                   key={i} 
+                   onClick={() => applySuggestion(sug)}
+                   className="bg-white border border-primary-200 text-primary-700 px-2.5 py-1 text-[10px] font-bold rounded-lg hover:bg-primary-600 hover:text-white transition-colors"
+                 >
+                   + {sug}
+                 </button>
+               ))}
+             </div>
+           )}
+        </div>
+      )}
       
       <form onSubmit={handleAdd} className="flex flex-col sm:flex-row gap-2 mb-4">
         {fields.map(f => (
