@@ -26,16 +26,22 @@ export default function Issues() {
   useEffect(() => {
     if (!profile) return;
 
-    let q = query(collection(db, 'issues'), where('guildId', '==', profile.guildId));
+    let q = query(collection(db, 'issues'));
     
-    if (filter === 'mine') {
-      q = query(collection(db, 'issues'), where('guildId', '==', profile.guildId), where('userId', '==', profile.uid));
-    } else if (filter === 'assigned') {
-      q = query(collection(db, 'issues'), where('guildId', '==', profile.guildId), where('assignedTo', '==', profile.uid));
-    } else if (!isAdmin) {
-      // Users only see theirs or what's assigned to them? 
-      // For now, let's keep it open or limited based on the user's role.
-      // If not admin, they see everything but restricted actions.
+    if (profile.role !== 'superadmin') {
+      q = query(collection(db, 'issues'), where('guildId', '==', profile.guildId));
+      if (filter === 'mine') {
+        q = query(collection(db, 'issues'), where('guildId', '==', profile.guildId), where('userId', '==', profile.uid));
+      } else if (filter === 'assigned') {
+        q = query(collection(db, 'issues'), where('guildId', '==', profile.guildId), where('assignedTo', '==', profile.uid));
+      }
+    } else {
+      // Superadmin filtering
+      if (filter === 'mine') {
+        q = query(collection(db, 'issues'), where('userId', '==', profile.uid));
+      } else if (filter === 'assigned') {
+        q = query(collection(db, 'issues'), where('assignedTo', '==', profile.uid));
+      }
     }
 
     const unsubscribe = onSnapshot(q, (snapshot) => {

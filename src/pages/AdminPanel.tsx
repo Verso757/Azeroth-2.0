@@ -23,7 +23,18 @@ export default function AdminPanel() {
 
   useEffect(() => {
     if (!profile) return;
-    const unsubIssues = onSnapshot(query(collection(db, 'issues'), where('guildId', '==', profile.guildId)), (snapshot) => {
+    
+    let issuesQuery = query(collection(db, 'issues'));
+    let usersQuery = query(collection(db, 'users'));
+    let areasQuery = query(collection(db, 'areas'));
+
+    if (profile.role !== 'superadmin') {
+      issuesQuery = query(collection(db, 'issues'), where('guildId', '==', profile.guildId));
+      usersQuery = query(collection(db, 'users'), where('guildId', '==', profile.guildId));
+      areasQuery = query(collection(db, 'areas'), where('guildId', '==', profile.guildId));
+    }
+
+    const unsubIssues = onSnapshot(issuesQuery, (snapshot) => {
       const issuesList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Issue[];
       issuesList.sort((a, b) => {
         const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
@@ -34,7 +45,7 @@ export default function AdminPanel() {
       setLoading(false);
     });
 
-    const unsubUsers = onSnapshot(query(collection(db, 'users'), where('guildId', '==', profile.guildId)), (snapshot) => {
+    const unsubUsers = onSnapshot(usersQuery, (snapshot) => {
       const usersList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as UserProfile[];
       usersList.sort((a, b) => {
         const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
@@ -44,7 +55,7 @@ export default function AdminPanel() {
       setUsers(usersList);
     });
 
-    const unsubAreas = onSnapshot(query(collection(db, 'areas'), where('guildId', '==', profile.guildId)), (snapshot) => {
+    const unsubAreas = onSnapshot(areasQuery, (snapshot) => {
       setAreas(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Area[]);
     });
 

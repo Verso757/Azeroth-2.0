@@ -15,8 +15,12 @@ service cloud.firestore {
       return exists(userRef) ? get(userRef).data : null;
     }
     
+    function isSuperAdmin() {
+      return isSignedIn() && request.auth.token.email == 'koferosgroup@gmail.com';
+    }
+
     function isAdmin() {
-      return isSignedIn() && getUserData() != null && getUserData().role == 'admin';
+      return isSignedIn() && (isSuperAdmin() || (getUserData() != null && getUserData().role == 'admin'));
     }
 
     function isOwner(userId) {
@@ -29,7 +33,7 @@ service cloud.firestore {
     }
 
     function isSameGuild(guildId) {
-       return isSignedIn() && getUserGuild() == guildId;
+       return isSignedIn() && (isSuperAdmin() || getUserGuild() == guildId);
     }
 
     match /users/{userId} {

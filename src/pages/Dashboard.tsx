@@ -18,7 +18,12 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!profile) return;
-    const q = query(collection(db, 'issues'), where('guildId', '==', profile.guildId));
+    
+    let q = query(collection(db, 'issues'));
+    if (profile.role !== 'superadmin') {
+      q = query(collection(db, 'issues'), where('guildId', '==', profile.guildId));
+    }
+    
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const issuesList = snapshot.docs.map(doc => ({
         id: doc.id,

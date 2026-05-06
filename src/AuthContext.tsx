@@ -9,6 +9,7 @@ interface AuthContextType {
   profile: UserProfile | null;
   loading: boolean;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   loginWithGoogle: (isSignup: boolean, providedGuildId?: string) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -28,7 +29,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userDoc = await getDoc(userRef);
         
         if (userDoc.exists()) {
-          setProfile(userDoc.data() as UserProfile);
+          const data = userDoc.data() as UserProfile;
+          if (data.email === 'koferosgroup@gmail.com' && data.role !== 'superadmin') {
+             await setDoc(userRef, { role: 'superadmin' }, { merge: true });
+             data.role = 'superadmin';
+          }
+          setProfile(data);
         } else {
           // If profile missing but user exists, potentially re-create
           // This usually happens during signup
@@ -89,7 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: cred.user.email || '',
         photoURL: cred.user.photoURL || null,
         guildId: cleanGuildId,
-        role: (isFirstInGuild || isOwnerByEmail) ? 'admin' : 'user',
+        role: isOwnerByEmail ? 'superadmin' : (isFirstInGuild ? 'admin' : 'user'),
         createdAt: new Date().toISOString()
       };
       await setDoc(userRef, newProfile);
@@ -104,7 +110,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user, 
       profile, 
       loading, 
-      isAdmin: profile?.role === 'admin',
+      isAdmin: profile?.role === 'admin' || profile?.role === 'superadmin',
+      isSuperAdmin: profile?.role === 'superadmin',
       loginWithGoogle,
       logout 
     }}>
