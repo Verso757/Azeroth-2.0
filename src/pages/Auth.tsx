@@ -5,7 +5,7 @@ import { ShieldAlert, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function AuthPage() {
-  const { loginWithGoogle, user, loading } = useAuth();
+  const { loginWithGoogle, profile, loading } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [guildId, setGuildId] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +17,7 @@ export default function AuthPage() {
     </div>
   );
   
-  if (user) return <Navigate to="/" />;
+  if (profile) return <Navigate to="/" />;
 
   const handleGoogleAuth = async () => {
     setError(null);

@@ -14,9 +14,9 @@ import NewIssue from './pages/NewIssue';
 import AdminPanel from './pages/AdminPanel';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { profile, loading } = useAuth();
   if (loading) return null;
-  return user ? <>{children}</> : <Navigate to="/auth" />;
+  return profile ? <>{children}</> : <Navigate to="/auth" />;
 }
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
