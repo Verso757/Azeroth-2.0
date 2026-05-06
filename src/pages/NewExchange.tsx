@@ -23,8 +23,6 @@ export default function NewExchange() {
   const [equipmentType, setEquipmentType] = useState('Celular');
   const [brandId, setBrandId] = useState('');
   const [motifId, setMotifId] = useState('');
-  const [oldEquipment, setOldEquipment] = useState('');
-  const [newEquipment, setNewEquipment] = useState('');
   const [price, setPrice] = useState('');
   const [affectedPerson, setAffectedPerson] = useState('');
 
@@ -72,7 +70,7 @@ export default function NewExchange() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!profile || !cityId || !routeId || !brandId || !motifId || !newEquipment || !affectedPerson) return;
+    if (!profile || !cityId || !routeId || !brandId || !motifId || !affectedPerson) return;
 
     setSubmitting(true);
     try {
@@ -92,8 +90,6 @@ export default function NewExchange() {
         brandName: brand?.name || '',
         motifId,
         motifName: motif?.name || '',
-        oldEquipment,
-        newEquipment,
         price: price ? parseFloat(price) : null,
         userId: profile.uid,
         userName: profile.displayName || profile.email,
@@ -200,31 +196,7 @@ export default function NewExchange() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Identificador Equipo Nuevo</label>
-               <input 
-                type="text" 
-                required
-                value={newEquipment}
-                onChange={e => setNewEquipment(e.target.value)}
-                placeholder="IMEI, Num Serie, MAC..."
-                className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm font-medium text-slate-900 hover:border-slate-200 focus:border-primary-500 focus:bg-white focus:ring-0 transition-all outline-none"
-              />
-            </div>
-            <div className="space-y-2">
-               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Identificador Equipo Viejo</label>
-               <input 
-                type="text" 
-                value={oldEquipment}
-                onChange={e => setOldEquipment(e.target.value)}
-                placeholder="IMEI, Num Serie (Opcional)"
-                className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm font-medium text-slate-900 hover:border-slate-200 focus:border-primary-500 focus:bg-white focus:ring-0 transition-all outline-none"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Motivo de Cambio</label>
               <select 

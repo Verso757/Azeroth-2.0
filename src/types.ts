@@ -101,8 +101,8 @@ export interface EquipmentExchange {
   brandName: string;
   motifId: string;
   motifName: string;
-  oldEquipment: string;
-  newEquipment: string;
+  oldEquipment?: string;
+  newEquipment?: string;
   price?: number;
   userId: string;
   userName: string;

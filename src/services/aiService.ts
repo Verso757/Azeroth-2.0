@@ -1,9 +1,21 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+let ai: GoogleGenAI | null = null;
+
+function getAiClient(): GoogleGenAI {
+  if (!ai) {
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) {
+      throw new Error('GEMINI_API_KEY environment variable is required');
+    }
+    ai = new GoogleGenAI({ apiKey: key });
+  }
+  return ai;
+}
 
 export async function suggestResolution(issueTitle: string, issueDescription: string, areaName: string, category: string): Promise<string> {
   try {
+    const aiClient = getAiClient();
     const prompt = `
 Eres un experto en soporte técnico y administración operativa.
 Analiza la siguiente incidencia reportada y sugiere una posible solución o plan de acción paso a paso para el agente que la va a atender. 
@@ -16,7 +28,7 @@ Descripción: ${issueDescription}
 Categoría sugerida: ${category || 'Ninguna'}
     `;
 
-    const response = await ai.models.generateContent({
+    const response = await aiClient.models.generateContent({
       model: "gemini-3.1-pro-preview",
       contents: prompt,
     });
@@ -30,6 +42,7 @@ Categoría sugerida: ${category || 'Ninguna'}
 
 export async function suggestCatalogItems(catalogName: string, existingItems: string[], description: string = ""): Promise<string[]> {
   try {
+    const aiClient = getAiClient();
     const prompt = `
 Eres un asistente experto para poblar catálogos en un sistema ERP.
 El usuario quiere generar de 3 a 5 nuevas opciones para el catálogo: "${catalogName}".
@@ -41,7 +54,7 @@ Devuelve ÚNICAMENTE un array JSON válido de strings. Sin markdown y sin otro t
 ["Opción 1", "Opción 2", "Opción 3"]
     `;
 
-    const response = await ai.models.generateContent({
+    const response = await aiClient.models.generateContent({
       model: "gemini-3.1-pro-preview",
       contents: prompt,
     });

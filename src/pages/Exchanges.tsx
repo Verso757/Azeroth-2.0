@@ -85,8 +85,6 @@ export default function Exchanges() {
         'Equipo': ex.equipmentType,
         'Marca': ex.brandName,
         'Motivo': ex.motifName,
-        'Equipo Viejo': ex.oldEquipment,
-        'Equipo Nuevo': ex.newEquipment,
         'Precio': ex.price ? `$ ${ex.price}` : '',
       }));
       exportToCSV(rows, 'cambios_equipo');
@@ -108,7 +106,7 @@ export default function Exchanges() {
     doc.text(`Afectado / Rutero: ${ex.affectedPerson}`, 14, 40);
     doc.text(`Sucursal/Ruta: ${ex.cityName} - ${ex.routeName}`, 14, 50);
     
-    const textLines = doc.splitTextToSize(`Yo ${ex.affectedPerson} me hago responsable del equipo ${ex.equipmentType} marca ${ex.brandName} (Serie/Id: ${ex.newEquipment}) que se cambió por el equipo (Serie/Id: ${ex.oldEquipment}) por motivo de: ${ex.motifName}. ${ex.price ? `El cual tiene un valor declarado de $${ex.price}.` : ''}\n\nMe comprometo a cuidar y mantener en buen estado este equipo y devolverlo en las mismas condiciones al ser requerido.`, 180);
+    const textLines = doc.splitTextToSize(`Yo ${ex.affectedPerson} me hago responsable del equipo ${ex.equipmentType} marca ${ex.brandName} que se cambió por motivo de: ${ex.motifName}. ${ex.price ? `El cual tiene un valor declarado de $${ex.price}.` : ''}\n\nMe comprometo a cuidar y mantener en buen estado este equipo y devolverlo en las mismas condiciones al ser requerido.`, 180);
     
     doc.text(textLines, 14, 65);
 
