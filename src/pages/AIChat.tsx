@@ -17,6 +17,7 @@ export default function AIChat() {
     e.preventDefault();
     if (!input.trim()) return;
 
+    // @ts-ignore
     const currentKey = import.meta.env.VITE_GEMINI_API_KEY;
     if (!currentKey) {
       alert("Por favor configura la variable de entorno VITE_GEMINI_API_KEY.");

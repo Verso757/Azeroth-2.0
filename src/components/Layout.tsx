@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { LayoutDashboard, ListTodo, LogOut, PlusCircle, ShieldAlert, Menu, X, User } from 'lucide-react';
+import { LayoutDashboard, ListTodo, LogOut, PlusCircle, ShieldAlert, Menu, X, User, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 
