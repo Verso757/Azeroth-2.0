@@ -33,9 +33,10 @@ export default function AdminPanel() {
     let guildsQuery = query(collection(db, 'guilds'));
 
     if (profile.role !== 'superadmin') {
-      issuesQuery = query(collection(db, 'issues'), where('guildId', '==', profile.guildId));
-      usersQuery = query(collection(db, 'users'), where('guildId', '==', profile.guildId));
-      areasQuery = query(collection(db, 'areas'), where('guildId', '==', profile.guildId));
+      const allGuilds = [profile.guildId, ...(profile.allowedGuilds || [])].slice(0, 30);
+      issuesQuery = query(collection(db, 'issues'), where('guildId', 'in', allGuilds));
+      usersQuery = query(collection(db, 'users'), where('guildId', 'in', allGuilds));
+      areasQuery = query(collection(db, 'areas'), where('guildId', 'in', allGuilds));
     }
 
     const unsubIssues = onSnapshot(issuesQuery, (snapshot) => {
@@ -50,7 +51,7 @@ export default function AdminPanel() {
     });
 
     const unsubUsers = onSnapshot(usersQuery, (snapshot) => {
-      const usersList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as UserProfile[];
+      const usersList = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() })) as unknown as UserProfile[];
       usersList.sort((a, b) => {
         const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
         const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
@@ -159,6 +160,16 @@ export default function AdminPanel() {
     }
   };
 
+  const handleUpdateUserGuilds = async (userId: string, guildsStr: string) => {
+    if (profile?.role !== 'superadmin') return;
+    try {
+      const allowedGuilds = guildsStr.split(',').map(s => s.trim().toUpperCase()).filter(s => s);
+      await updateDoc(doc(db, 'users', userId), { allowedGuilds });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleUpdateUserRole = async (userId: string, newRole: string) => {
     if (profile?.role !== 'superadmin') return;
     try {
@@ -233,6 +244,9 @@ export default function AdminPanel() {
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="px-8 py-6 text-xs font-black text-slate-500 uppercase tracking-widest">Colaborador</th>
                   <th className="px-8 py-6 text-xs font-black text-slate-500 uppercase tracking-widest">Rol</th>
+                  {profile.role === 'superadmin' && (
+                    <th className="px-8 py-6 text-xs font-black text-slate-500 uppercase tracking-widest">Empresas Extra</th>
+                  )}
                   <th className="px-8 py-6 text-xs font-black text-slate-500 uppercase tracking-widest">Registro</th>
                   <th className="px-8 py-6 text-xs font-black text-slate-500 uppercase tracking-widest text-right">Opciones</th>
                 </tr>
@@ -271,6 +285,17 @@ export default function AdminPanel() {
                          </span>
                        )}
                     </td>
+                    {profile.role === 'superadmin' && (
+                      <td className="px-8 py-6">
+                        <input
+                          type="text"
+                          defaultValue={user.allowedGuilds?.join(', ') || ''}
+                          onBlur={(e) => handleUpdateUserGuilds(user.uid, e.target.value)}
+                          placeholder="EMP1, EMP2"
+                          className="bg-white border border-slate-200 text-slate-700 text-xs rounded-xl p-2 w-32 focus:ring-2 focus:ring-primary-500 outline-none uppercase font-mono"
+                        />
+                      </td>
+                    )}
                     <td className="px-8 py-6 text-xs font-bold text-slate-500">
                        {formatDate(user.createdAt)}
                     </td>

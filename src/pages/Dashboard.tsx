@@ -21,7 +21,8 @@ export default function Dashboard() {
     
     let q = query(collection(db, 'issues'));
     if (profile.role !== 'superadmin') {
-      q = query(collection(db, 'issues'), where('guildId', '==', profile.guildId));
+      const allGuilds = [profile.guildId, ...(profile.allowedGuilds || [])].slice(0, 30);
+      q = query(collection(db, 'issues'), where('guildId', 'in', allGuilds));
     }
     
     const unsubscribe = onSnapshot(q, (snapshot) => {

@@ -7,7 +7,8 @@ export interface UserProfile {
   photoURL: string | null;
   role: UserRole;
   guildId: string;
-  createdAt: string;
+  allowedGuilds?: string[];
+  createdAt: any;
 }
 
 export type IssuePriority = 'low' | 'medium' | 'high' | 'critical';
@@ -26,14 +27,16 @@ export interface Issue {
   userName: string;
   userEmail: string;
   reportedBy?: string;
+  affectedPeople?: string[];
   reportsCount?: number;
+  reporters?: string[];
   assignedTo?: string;
   assignedToName?: string;
   resolution?: string;
   resolvedBy?: string;
   resolvedAt?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: any;
+  updatedAt: any;
   tags?: string[];
 }
 

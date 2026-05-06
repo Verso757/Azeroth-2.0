@@ -20,7 +20,8 @@ export default function NewIssue() {
     if (!profile) return;
     let areasQuery = query(collection(db, 'areas'));
     if (profile.role !== 'superadmin') {
-      areasQuery = query(collection(db, 'areas'), where('guildId', '==', profile.guildId));
+      const allGuilds = [profile.guildId, ...(profile.allowedGuilds || [])].slice(0, 30);
+      areasQuery = query(collection(db, 'areas'), where('guildId', 'in', allGuilds));
     }
     const unsub = onSnapshot(areasQuery, (snapshot) => {
       setAreas(snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Area[]);
@@ -48,12 +49,13 @@ export default function NewIssue() {
       
       await addDoc(collection(db, 'issues'), {
         ...formData,
+        affectedPeople: formData.reportedBy ? [formData.reportedBy] : [],
         areaName: selectedArea?.name || 'Otro',
         status: 'open',
         userId: profile.uid,
         userName: profile.displayName,
         userEmail: profile.email,
-        guildId: profile.guildId,
+        guildId: selectedArea?.guildId || profile.guildId,
         reportsCount: 1,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),

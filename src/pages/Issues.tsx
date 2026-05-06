@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, serverTimestamp, addDoc, getDocs } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, serverTimestamp, addDoc, getDocs, arrayUnion } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../AuthContext';
 import { Issue, IssueEvent, IssueStatus, OperationType } from '../types';
@@ -29,11 +29,12 @@ export default function Issues() {
     let q = query(collection(db, 'issues'));
     
     if (profile.role !== 'superadmin') {
-      q = query(collection(db, 'issues'), where('guildId', '==', profile.guildId));
+      const allGuilds = [profile.guildId, ...(profile.allowedGuilds || [])].slice(0, 30);
+      q = query(collection(db, 'issues'), where('guildId', 'in', allGuilds));
       if (filter === 'mine') {
-        q = query(collection(db, 'issues'), where('guildId', '==', profile.guildId), where('userId', '==', profile.uid));
+        q = query(collection(db, 'issues'), where('guildId', 'in', allGuilds), where('userId', '==', profile.uid));
       } else if (filter === 'assigned') {
-        q = query(collection(db, 'issues'), where('guildId', '==', profile.guildId), where('assignedTo', '==', profile.uid));
+        q = query(collection(db, 'issues'), where('guildId', 'in', allGuilds), where('assignedTo', '==', profile.uid));
       }
     } else {
       // Superadmin filtering
@@ -138,7 +139,7 @@ export default function Issues() {
   );
 }
 
-function IssueCard({ issue, onClick }: { issue: Issue, onClick: () => void }) {
+const IssueCard: React.FC<{ issue: Issue; onClick: () => void }> = ({ issue, onClick }) => {
   const status = STATUS_LABELS[issue.status] || STATUS_LABELS.open;
   const StatusIcon = status.icon;
 
@@ -185,9 +186,9 @@ function IssueCard({ issue, onClick }: { issue: Issue, onClick: () => void }) {
              <div className="w-5 h-5 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center text-[10px] font-black">{issue.userName?.charAt(0) || 'U'}</div>
              <span className="text-xs font-bold text-slate-600 truncate max-w-[120px]">{issue.userName}</span>
           </div>
-          {issue.reportedBy && (
+          {issue.affectedPeople && issue.affectedPeople.length > 0 && (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-xl border border-blue-100">
-               <span className="text-xs font-bold text-blue-700 truncate max-w-[120px]">Afectado: {issue.reportedBy}</span>
+               <span className="text-xs font-bold text-blue-700 truncate max-w-[120px]">Afectados: {issue.affectedPeople.join(', ')}</span>
             </div>
           )}
           {issue.assignedToName && (
@@ -217,6 +218,8 @@ function IssueDetailModal({ issue, onClose }: { issue: Issue, onClose: () => voi
   const [events, setEvents] = useState<IssueEvent[]>([]);
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showReincidenceInput, setShowReincidenceInput] = useState(false);
+  const [newAffectedPerson, setNewAffectedPerson] = useState('');
 
   useEffect(() => {
     const q = query(
@@ -289,25 +292,61 @@ function IssueDetailModal({ issue, onClose }: { issue: Issue, onClose: () => voi
               <X className="w-6 h-6 text-slate-400" />
             </button>
             <div className="flex gap-2">
-              <button 
-                onClick={async () => {
-                   if (!profile) return;
-                   try {
-                     const issueRef = doc(db, 'issues', issue.id);
-                     await updateDoc(issueRef, { 
-                       reportsCount: (issue.reportsCount || 1) + 1,
-                       updatedAt: serverTimestamp()
-                     });
-                     await addEvent('comment', `➕ Reincidencia reportada por ${profile.displayName}`);
-                   } catch(e) {
-                     console.error(e);
-                   }
-                }}
-                className="px-6 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold shadow-sm border border-slate-200 hover:bg-slate-200 transition-all flex items-center gap-2 uppercase tracking-widest"
-              >
-                <PlusSquare className="w-4 h-4" />
-                Reincidencia
-              </button>
+              {showReincidenceInput ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={newAffectedPerson}
+                    onChange={(e) => setNewAffectedPerson(e.target.value)}
+                    placeholder="Persona afectada (Opcional)"
+                    className="px-4 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-primary-500"
+                    autoFocus
+                  />
+                  <button 
+                    onClick={async () => {
+                       if (!profile || issue.reporters?.includes(profile.uid)) return;
+                       try {
+                         const issueRef = doc(db, 'issues', issue.id);
+                         const updates: any = { 
+                           reportsCount: (issue.reportsCount || 1) + 1,
+                           reporters: arrayUnion(profile.uid),
+                           updatedAt: serverTimestamp()
+                         };
+                         if (newAffectedPerson.trim()) {
+                           updates.affectedPeople = arrayUnion(newAffectedPerson.trim());
+                         }
+                         await updateDoc(issueRef, updates);
+                         await addEvent('comment', `➕ Reincidencia reportada por ${profile.displayName}${newAffectedPerson.trim() ? ` (Afectado: ${newAffectedPerson.trim()})` : ''}`);
+                         setShowReincidenceInput(false);
+                         setNewAffectedPerson('');
+                       } catch(e) {
+                         console.error(e);
+                       }
+                    }}
+                    className="px-4 py-2 bg-primary-600 text-white rounded-xl text-xs font-bold hover:bg-primary-700 transition-all uppercase tracking-widest"
+                  >
+                    Confirmar
+                  </button>
+                  <button 
+                    onClick={() => setShowReincidenceInput(false)}
+                    className="px-3 py-2 bg-slate-100 text-slate-500 rounded-xl text-xs hover:bg-slate-200 transition-all"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <button 
+                  onClick={() => setShowReincidenceInput(true)}
+                  disabled={issue.reporters?.includes(profile?.uid || '')}
+                  className={cn(
+                    "px-6 py-2 rounded-xl text-xs font-bold shadow-sm border border-slate-200 transition-all flex items-center gap-2 uppercase tracking-widest",
+                    issue.reporters?.includes(profile?.uid || '') ? "opacity-50 cursor-not-allowed bg-slate-50 text-slate-400" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  )}
+                >
+                  <PlusSquare className="w-4 h-4" />
+                  {issue.reporters?.includes(profile?.uid || '') ? 'Ya Reportado' : 'Reincidencia'}
+                </button>
+              )}
               {isAdmin && issue.status !== 'resolved' && (
                 <button 
                   onClick={() => handleStatusChange('resolved')}
@@ -329,12 +368,26 @@ function IssueDetailModal({ issue, onClose }: { issue: Issue, onClose: () => voi
                <h2 className="text-4xl font-black text-slate-900 leading-tight uppercase">{issue.title}</h2>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
                <InfoTile label="Prioridad" value={issue.priority} color={issue.priority === 'critical' ? 'red' : 'blue'} />
                <InfoTile label="Estado" value={issue.status} color="slate" />
                <InfoTile label="Reportó" value={issue.userName} color="slate" />
                <InfoTile label="ID" value={`#${issue.id.slice(-6).toUpperCase()}`} color="slate" />
+               <InfoTile label="Reportes" value={issue.reportsCount?.toString() || '1'} color={(issue.reportsCount || 1) > 1 ? 'amber' : 'slate'} />
             </div>
+
+            {issue.affectedPeople && issue.affectedPeople.length > 0 && (
+              <div className="space-y-4 pt-4">
+                <h4 className="text-sm font-black text-blue-600 uppercase tracking-widest border-b border-blue-100 pb-2">Personas Afectadas</h4>
+                <div className="flex flex-wrap gap-2">
+                  {issue.affectedPeople.map((person, idx) => (
+                    <div key={idx} className="px-4 py-2 bg-blue-50 text-blue-700 rounded-xl text-xs font-bold border border-blue-100">
+                      {person}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="space-y-4">
               <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest border-b border-slate-100 pb-2 flex items-center gap-2">

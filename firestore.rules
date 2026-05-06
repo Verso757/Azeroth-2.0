@@ -33,7 +33,12 @@ service cloud.firestore {
     }
 
     function isSameGuild(guildId) {
-       return isSignedIn() && (isSuperAdmin() || getUserGuild() == guildId);
+       let uData = getUserData();
+       return isSignedIn() && (
+         isSuperAdmin() || 
+         (uData != null && uData.guildId == guildId) ||
+         (uData != null && 'allowedGuilds' in uData && guildId in uData.allowedGuilds)
+       );
     }
 
     match /users/{userId} {
@@ -83,8 +88,10 @@ service cloud.firestore {
       
       allow update: if isSignedIn() && isSameGuild(existing().guildId) && incoming().guildId == existing().guildId && (
         isAdmin() ||
-        (incoming().diff(existing()).affectedKeys().hasOnly(['reportsCount', 'updatedAt']) &&
+        (incoming().diff(existing()).affectedKeys().hasOnly(['reportsCount', 'updatedAt', 'reporters', 'affectedPeople']) &&
          incoming().reportsCount is number &&
+         incoming().reporters is list &&
+         incoming().affectedPeople is list &&
          incoming().updatedAt == request.time) ||
         (isOwner(existing().userId) && existing().status == 'open' && 
          incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'areaId', 'areaName', 'priority', 'style', 'updatedAt']) &&
