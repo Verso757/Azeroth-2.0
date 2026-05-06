@@ -19,26 +19,49 @@ export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState<'issues' | 'users' | 'areas' | 'settings' | 'guilds' | 'catalogs'>('issues');
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [resolutionText, setResolutionText] = useState('');
+  const [selectedAdminGuild, setSelectedAdminGuild] = useState<string>('');
 
   const [newAreaName, setNewAreaName] = useState('');
   const [newGuildCode, setNewGuildCode] = useState('');
   const [newGuildName, setNewGuildName] = useState('');
   const [currentTheme, setCurrentTheme] = useState('blue');
 
+  // Load guilds first to set initial selectedAdminGuild
   useEffect(() => {
     if (!profile) return;
-    
-    let issuesQuery = query(collection(db, 'issues'));
-    let usersQuery = query(collection(db, 'users'));
-    let areasQuery = query(collection(db, 'areas'));
-    let guildsQuery = query(collection(db, 'guilds'));
-
-    if (profile.role !== 'superadmin') {
-      const allGuilds = [profile.guildId, ...(profile.allowedGuilds || [])].slice(0, 30);
-      issuesQuery = query(collection(db, 'issues'), where('guildId', 'in', allGuilds));
-      usersQuery = query(collection(db, 'users'), where('guildId', 'in', allGuilds));
-      areasQuery = query(collection(db, 'areas'), where('guildId', 'in', allGuilds));
+    if (profile.role === 'superadmin') {
+      const unsub = onSnapshot(query(collection(db, 'guilds')), (snapshot) => {
+        const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setGuilds(list);
+        if (!selectedAdminGuild && list.length > 0) {
+          setSelectedAdminGuild(list[0].id);
+        }
+      });
+      return () => unsub();
+    } else if (profile.allowedGuilds && profile.allowedGuilds.length > 0) {
+      const gSnap = [profile.guildId, ...profile.allowedGuilds];
+      // Ideally we'd fetch them to get names, but we can just use IDs as names for now or fetch them.
+      const unsub = onSnapshot(query(collection(db, 'guilds'), where('id', 'in', gSnap.slice(0, 30))), (snapshot) => {
+        const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setGuilds(list);
+        if (!selectedAdminGuild && list.length > 0) {
+          setSelectedAdminGuild(profile.guildId); // default to primary
+        }
+      });
+      return () => unsub();
+    } else {
+      setSelectedAdminGuild(profile.guildId);
+      setGuilds([{ id: profile.guildId, name: profile.guildId }]); // fallback
     }
+  }, [profile]);
+
+  useEffect(() => {
+    if (!profile || !selectedAdminGuild) return;
+    
+    // Always use selectedAdminGuild for the admin view
+    let issuesQuery = query(collection(db, 'issues'), where('guildId', '==', selectedAdminGuild));
+    let usersQuery = query(collection(db, 'users'), where('guildId', '==', selectedAdminGuild));
+    let areasQuery = query(collection(db, 'areas'), where('guildId', '==', selectedAdminGuild));
 
     const unsubIssues = onSnapshot(issuesQuery, (snapshot) => {
       const issuesList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Issue[];
@@ -65,27 +88,21 @@ export default function AdminPanel() {
       setAreas(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Area[]);
     });
 
-    const unsubSettings = onSnapshot(doc(db, 'settings', profile.guildId), (docSnap) => {
+    const unsubSettings = onSnapshot(doc(db, 'settings', selectedAdminGuild), (docSnap) => {
       if (docSnap.exists()) {
         setCurrentTheme(docSnap.data().themeColor || 'blue');
+      } else {
+        setCurrentTheme('blue');
       }
     });
-
-    let unsubGuilds = () => {};
-    if (profile.role === 'superadmin') {
-      unsubGuilds = onSnapshot(guildsQuery, (snapshot) => {
-        setGuilds(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      });
-    }
 
     return () => {
       unsubIssues();
       unsubUsers();
       unsubAreas();
       unsubSettings();
-      unsubGuilds();
     };
-  }, [profile]);
+  }, [profile, selectedAdminGuild]);
 
   const handleUpdateTheme = async (color: string) => {
     if (!profile) return;
@@ -131,13 +148,14 @@ export default function AdminPanel() {
 
   const handleAddArea = async () => {
     if (!newAreaName || !profile) return;
+    const currentGuild = selectedAdminGuild || profile.guildId;
     try {
-      const id = newAreaName.toLowerCase().replace(/\s+/g, '-');
+      const id = newAreaName.toLowerCase().replace(/\s+/g, '-') + '-' + currentGuild.toLowerCase(); // keep id unique per guild
       await setDoc(doc(db, 'areas', id), {
         id,
         name: newAreaName,
         color: 'blue',
-        guildId: profile.guildId, // Admin rule requires guildId match
+        guildId: currentGuild,
       });
       setNewAreaName('');
     } catch (err) {
@@ -183,19 +201,32 @@ export default function AdminPanel() {
   const pendingIssues = issues.filter(i => i.status === 'open' || i.status === 'in_progress');
 
   return (
-    <div className="space-y-10">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+    <div className="space-y-8">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
         <div>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tight">Panel de Administración</h1>
-          <p className="text-slate-500 font-medium">Gestión administrativa de la plataforma.</p>
+          <div className="flex items-center gap-4 mb-1">
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Panel de Administración</h1>
+            {guilds.length > 1 && (
+              <select 
+                 value={selectedAdminGuild}
+                 onChange={(e) => setSelectedAdminGuild(e.target.value)}
+                 className="bg-white border border-slate-200 text-slate-600 text-sm font-bold rounded-xl px-3 py-1.5 focus:ring-2 outline-none focus:ring-primary-500 shadow-sm"
+              >
+                 {guilds.map(g => (
+                   <option key={g.id} value={g.id}>{g.name || g.id}</option>
+                 ))}
+              </select>
+            )}
+          </div>
+          <p className="text-slate-500 font-medium text-sm">Gestión administrativa de la plataforma.</p>
         </div>
         
-        <div className="flex bg-white rounded-2xl border border-slate-200 p-1 shadow-sm overflow-x-auto">
+        <div className="flex flex-wrap bg-white rounded-2xl border border-slate-200 p-1 shadow-sm gap-1 self-stretch lg:self-auto w-full lg:w-auto">
           <TabButton active={activeTab === 'issues'} onClick={() => setActiveTab('issues')} icon={Activity} label="Incidencias" />
           <TabButton active={activeTab === 'users'} onClick={() => setActiveTab('users')} icon={Users} label="Usuarios" />
           <TabButton active={activeTab === 'areas'} onClick={() => setActiveTab('areas')} icon={LayoutGrid} label="Divisiones" />
           <TabButton active={activeTab === 'catalogs'} onClick={() => setActiveTab('catalogs')} icon={LayoutGrid} label="Catálogos" />
-          <TabButton active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} icon={Settings2} label="Configuración" />
+          <TabButton active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} icon={Settings2} label="Ajustes" />
           {profile?.role === 'superadmin' && (
             <TabButton active={activeTab === 'guilds'} onClick={() => setActiveTab('guilds')} icon={ShieldCheck} label="Empresas" />
           )}
@@ -405,22 +436,26 @@ export default function AdminPanel() {
                   collectionName="cities" 
                   title="Ciudades / Sucursales" 
                   fields={[ { name: 'name', label: 'Nombre' } ]} 
+                  selectedGuild={selectedAdminGuild}
                 />
                 <DataConfig 
                   collectionName="routes" 
                   title="Rutas" 
                   fields={[ { name: 'name', label: 'Nombre' } ]} 
                   parentCollection={{ name: 'cities', localField: 'cityId', parentField: 'name', docNameField: 'Ciudad' }}
+                  selectedGuild={selectedAdminGuild}
                 />
                 <DataConfig 
                   collectionName="categories" 
                   title="Categorías de Incidencias" 
                   fields={[ { name: 'name', label: 'Nombre' } ]} 
+                  selectedGuild={selectedAdminGuild}
                 />
                 <DataConfig 
                   collectionName="motifs" 
                   title="Motivos de Cambio" 
                   fields={[ { name: 'name', label: 'Motivo' } ]} 
+                  selectedGuild={selectedAdminGuild}
                 />
                 <div className="md:col-span-2">
                   <DataConfig 
@@ -430,6 +465,7 @@ export default function AdminPanel() {
                       { name: 'name', label: 'Nombre/Modelo' },
                       { name: 'type', label: 'Tipo de Equipo', type: 'select', options: [{value: 'Celular', label:'Celular'}, {value: 'Impresora Térmica', label:'Impresora Térmica'}, {value:'Otro', label:'Otro'}] } 
                     ]} 
+                    selectedGuild={selectedAdminGuild}
                   />
                 </div>
              </div>
@@ -483,12 +519,12 @@ function TabButton({ active, onClick, icon: Icon, label }: any) {
     <button
       onClick={onClick}
       className={cn(
-        "flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
+        "flex-1 lg:flex-none flex justify-center items-center gap-2 px-4 md:px-5 py-2 md:py-2.5 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest transition-all",
         active ? "bg-primary-600 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
       )}
     >
-      <Icon className="w-4 h-4" />
-      {label}
+      <Icon className="w-3.5 h-3.5 md:w-4 md:h-4" />
+      <span className="hidden sm:inline">{label}</span>
     </button>
   );
 }
