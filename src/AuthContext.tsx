@@ -84,10 +84,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       
       const { getDocs, query, collection, where, limit } = await import('firebase/firestore');
-      const existingUsers = await getDocs(query(collection(db, 'users'), where('guildId', '==', cleanGuildId), limit(1)));
       
-      const isFirstInGuild = existingUsers.empty;
       const isOwnerByEmail = cred.user.email === 'koferosgroup@gmail.com';
+
+      if (!isOwnerByEmail) {
+        const guildDoc = await getDoc(doc(db, 'guilds', cleanGuildId));
+        if (!guildDoc.exists()) {
+          await signOut(auth);
+          throw new Error('La Empresa / Franquicia no existe. Registre el código correcto o contacte a administración.');
+        }
+      }
       
       const newProfile: UserProfile = {
         uid: cred.user.uid,
@@ -95,7 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: cred.user.email || '',
         photoURL: cred.user.photoURL || null,
         guildId: cleanGuildId,
-        role: isOwnerByEmail ? 'superadmin' : (isFirstInGuild ? 'admin' : 'user'),
+        role: isOwnerByEmail ? 'superadmin' : 'user',
         createdAt: new Date().toISOString()
       };
       await setDoc(userRef, newProfile);

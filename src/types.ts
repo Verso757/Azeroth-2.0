@@ -25,6 +25,8 @@ export interface Issue {
   userId: string;
   userName: string;
   userEmail: string;
+  reportedBy?: string;
+  reportsCount?: number;
   assignedTo?: string;
   assignedToName?: string;
   resolution?: string;
@@ -45,6 +47,12 @@ export interface IssueEvent {
   content: string;
   from?: string;
   to?: string;
+  createdAt: string;
+}
+
+export interface Guild {
+  id: string; // The code
+  name: string;
   createdAt: string;
 }
 

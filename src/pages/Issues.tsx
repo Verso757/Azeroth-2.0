@@ -4,7 +4,7 @@ import { db } from '../firebase';
 import { useAuth } from '../AuthContext';
 import { Issue, IssueEvent, IssueStatus, OperationType } from '../types';
 import { handleFirestoreError } from '../constants';
-import { Filter, Search, Clock, CheckCircle2, AlertTriangle, MoreHorizontal, XCircle, MessageSquare, UserPlus, ArrowRight, Tag, ChevronRight, X, Download } from 'lucide-react';
+import { Filter, Search, Clock, CheckCircle2, AlertTriangle, MoreHorizontal, XCircle, MessageSquare, UserPlus, ArrowRight, Tag, ChevronRight, X, Download, PlusSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, formatDate, exportToCSV } from '../lib/utils';
 
@@ -182,15 +182,26 @@ function IssueCard({ issue, onClick }: { issue: Issue, onClick: () => void }) {
 
         <div className="flex flex-wrap items-center gap-4 pt-2">
           <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-100">
-             <div className="w-5 h-5 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center text-[10px] font-black">{issue.userName?.charAt(0)}</div>
-             <span className="text-xs font-bold text-slate-600">{issue.userName}</span>
+             <div className="w-5 h-5 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center text-[10px] font-black">{issue.userName?.charAt(0) || 'U'}</div>
+             <span className="text-xs font-bold text-slate-600 truncate max-w-[120px]">{issue.userName}</span>
           </div>
+          {issue.reportedBy && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-xl border border-blue-100">
+               <span className="text-xs font-bold text-blue-700 truncate max-w-[120px]">Afectado: {issue.reportedBy}</span>
+            </div>
+          )}
           {issue.assignedToName && (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 rounded-xl border border-emerald-100">
                <UserPlus className="w-3.5 h-3.5 text-emerald-600" />
-               <span className="text-xs font-bold text-emerald-700">Asignado: {issue.assignedToName}</span>
+               <span className="text-xs font-bold text-emerald-700 truncate max-w-[120px]">Asignado: {issue.assignedToName}</span>
             </div>
           )}
+          {(issue.reportsCount && issue.reportsCount > 1) ? (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 rounded-xl border border-red-100">
+               <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
+               <span className="text-xs font-bold text-red-700">{issue.reportsCount} Reportes</span>
+            </div>
+          ) : null}
         </div>
       </div>
       
@@ -278,6 +289,25 @@ function IssueDetailModal({ issue, onClose }: { issue: Issue, onClose: () => voi
               <X className="w-6 h-6 text-slate-400" />
             </button>
             <div className="flex gap-2">
+              <button 
+                onClick={async () => {
+                   if (!profile) return;
+                   try {
+                     const issueRef = doc(db, 'issues', issue.id);
+                     await updateDoc(issueRef, { 
+                       reportsCount: (issue.reportsCount || 1) + 1,
+                       updatedAt: serverTimestamp()
+                     });
+                     await addEvent('comment', `➕ Reincidencia reportada por ${profile.displayName}`);
+                   } catch(e) {
+                     console.error(e);
+                   }
+                }}
+                className="px-6 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold shadow-sm border border-slate-200 hover:bg-slate-200 transition-all flex items-center gap-2 uppercase tracking-widest"
+              >
+                <PlusSquare className="w-4 h-4" />
+                Reincidencia
+              </button>
               {isAdmin && issue.status !== 'resolved' && (
                 <button 
                   onClick={() => handleStatusChange('resolved')}

@@ -13,12 +13,15 @@ export default function AdminPanel() {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
+  const [guilds, setGuilds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'issues' | 'users' | 'areas' | 'settings'>('issues');
+  const [activeTab, setActiveTab] = useState<'issues' | 'users' | 'areas' | 'settings' | 'guilds'>('issues');
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [resolutionText, setResolutionText] = useState('');
 
   const [newAreaName, setNewAreaName] = useState('');
+  const [newGuildCode, setNewGuildCode] = useState('');
+  const [newGuildName, setNewGuildName] = useState('');
   const [currentTheme, setCurrentTheme] = useState('blue');
 
   useEffect(() => {
@@ -27,6 +30,7 @@ export default function AdminPanel() {
     let issuesQuery = query(collection(db, 'issues'));
     let usersQuery = query(collection(db, 'users'));
     let areasQuery = query(collection(db, 'areas'));
+    let guildsQuery = query(collection(db, 'guilds'));
 
     if (profile.role !== 'superadmin') {
       issuesQuery = query(collection(db, 'issues'), where('guildId', '==', profile.guildId));
@@ -65,11 +69,19 @@ export default function AdminPanel() {
       }
     });
 
+    let unsubGuilds = () => {};
+    if (profile.role === 'superadmin') {
+      unsubGuilds = onSnapshot(guildsQuery, (snapshot) => {
+        setGuilds(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      });
+    }
+
     return () => {
       unsubIssues();
       unsubUsers();
       unsubAreas();
       unsubSettings();
+      unsubGuilds();
     };
   }, [profile]);
 
@@ -131,6 +143,31 @@ export default function AdminPanel() {
     }
   };
 
+  const handleAddGuild = async () => {
+    if (!newGuildCode || !newGuildName || profile?.role !== 'superadmin') return;
+    try {
+      const code = newGuildCode.toUpperCase().trim();
+      await setDoc(doc(db, 'guilds', code), {
+        id: code,
+        name: newGuildName,
+        createdAt: serverTimestamp()
+      });
+      setNewGuildName('');
+      setNewGuildCode('');
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleUpdateUserRole = async (userId: string, newRole: string) => {
+    if (profile?.role !== 'superadmin') return;
+    try {
+      await updateDoc(doc(db, 'users', userId), { role: newRole });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const pendingIssues = issues.filter(i => i.status === 'open' || i.status === 'in_progress');
 
   return (
@@ -146,6 +183,9 @@ export default function AdminPanel() {
           <TabButton active={activeTab === 'users'} onClick={() => setActiveTab('users')} icon={Users} label="Usuarios" />
           <TabButton active={activeTab === 'areas'} onClick={() => setActiveTab('areas')} icon={LayoutGrid} label="Divisiones" />
           <TabButton active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} icon={Settings2} label="Configuración" />
+          {profile?.role === 'superadmin' && (
+            <TabButton active={activeTab === 'guilds'} onClick={() => setActiveTab('guilds')} icon={ShieldCheck} label="Empresas" />
+          )}
         </div>
       </div>
 
@@ -212,12 +252,24 @@ export default function AdminPanel() {
                       </div>
                     </td>
                     <td className="px-8 py-6">
-                       <span className={cn(
-                         "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
-                         user.role === 'admin' ? "bg-primary-600 text-white" : "bg-slate-100 text-slate-600 border border-slate-200"
-                       )}>
-                         {user.role}
-                       </span>
+                       {profile.role === 'superadmin' ? (
+                         <select
+                           value={user.role}
+                           onChange={(e) => handleUpdateUserRole(user.uid, e.target.value)}
+                           className="bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-xl focus:ring-primary-500 font-bold p-2"
+                         >
+                           <option value="user">USER</option>
+                           <option value="admin">ADMIN</option>
+                           <option value="superadmin">SUPERADMIN</option>
+                         </select>
+                       ) : (
+                         <span className={cn(
+                           "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
+                           user.role === 'admin' ? "bg-primary-600 text-white" : "bg-slate-100 text-slate-600 border border-slate-200"
+                         )}>
+                           {user.role}
+                         </span>
+                       )}
                     </td>
                     <td className="px-8 py-6 text-xs font-bold text-slate-500">
                        {formatDate(user.createdAt)}
@@ -267,6 +319,52 @@ export default function AdminPanel() {
                    <button onClick={() => deleteDoc(doc(db, 'areas', area.id))} className="p-3 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100">
                       <Trash2 className="w-5 h-5" />
                    </button>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {profile?.role === 'superadmin' && activeTab === 'guilds' && (
+          <motion.div key="guilds" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+            <div className="bg-white p-10 rounded-[2.5rem] border border-slate-200 flex flex-col items-center gap-6 shadow-sm text-slate-900">
+               <div className="w-full space-y-1 mb-2">
+                 <h3 className="text-xl font-black uppercase tracking-tight">Nueva Empresa / Franquicia</h3>
+                 <p className="text-sm text-slate-500 font-medium">Registra una nueva entidad en el sistema multiplataforma.</p>
+               </div>
+               <div className="flex flex-col md:flex-row gap-4 w-full">
+                 <input 
+                   type="text" 
+                   value={newGuildName}
+                   onChange={e => setNewGuildName(e.target.value)}
+                   placeholder="Nombre de la empresa" 
+                   className="flex-1 px-6 py-4 bg-white border border-slate-200 text-slate-900 rounded-2xl text-sm focus:ring-2 focus:ring-primary-500 transition-all font-bold placeholder:font-normal placeholder:text-slate-400"
+                 />
+                 <input 
+                   type="text" 
+                   value={newGuildCode}
+                   onChange={e => setNewGuildCode(e.target.value)}
+                   placeholder="Código (Ej: EMP_01)" 
+                   className="flex-1 px-6 py-4 bg-white border border-slate-200 text-slate-900 rounded-2xl text-sm focus:ring-2 focus:ring-primary-500 transition-all font-bold placeholder:font-normal placeholder:text-slate-400 uppercase"
+                 />
+                 <button onClick={handleAddGuild} className="px-8 py-4 bg-primary-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-primary-700 shadow-lg shadow-primary-600/20 transition-all flex items-center justify-center gap-2">
+                   <Plus className="w-4 h-4" /> Registrar
+                 </button>
+               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {guilds.map(guild => (
+                <div key={guild.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm flex items-center justify-between group">
+                   <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-100">
+                         <ShieldCheck className="w-6 h-6" />
+                      </div>
+                      <div>
+                         <p className="font-black text-slate-900 uppercase tracking-tight">{guild.name}</p>
+                         <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{guild.id}</p>
+                      </div>
+                   </div>
                 </div>
               ))}
             </div>

@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../AuthContext';
-import { AREAS, handleFirestoreError } from '../constants';
-import { OperationType, IssuePriority } from '../types';
-import { AlertCircle, CheckCircle2, ChevronRight, Save } from 'lucide-react';
+import { handleFirestoreError } from '../constants';
+import { OperationType, IssuePriority, Area } from '../types';
+import { AlertCircle, CheckCircle2, ChevronRight, Save, User } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
 
@@ -14,11 +14,25 @@ export default function NewIssue() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [areas, setAreas] = useState<Area[]>([]);
+
+  useEffect(() => {
+    if (!profile) return;
+    let areasQuery = query(collection(db, 'areas'));
+    if (profile.role !== 'superadmin') {
+      areasQuery = query(collection(db, 'areas'), where('guildId', '==', profile.guildId));
+    }
+    const unsub = onSnapshot(areasQuery, (snapshot) => {
+      setAreas(snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Area[]);
+    });
+    return () => unsub();
+  }, [profile]);
 
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     areaId: '',
+    reportedBy: '',
     priority: 'medium' as IssuePriority,
   });
 
@@ -30,7 +44,7 @@ export default function NewIssue() {
     setError(null);
 
     try {
-      const selectedArea = AREAS.find(a => a.id === formData.areaId);
+      const selectedArea = areas.find(a => a.id === formData.areaId);
       
       await addDoc(collection(db, 'issues'), {
         ...formData,
@@ -39,7 +53,8 @@ export default function NewIssue() {
         userId: profile.uid,
         userName: profile.displayName,
         userEmail: profile.email,
-        guildId: profile.guildId, // Added guildId required by firestore.rules
+        guildId: profile.guildId,
+        reportsCount: 1,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -83,6 +98,20 @@ export default function NewIssue() {
           />
         </div>
 
+        <div className="space-y-2">
+          <label className="text-sm font-bold text-slate-700">Afectado / Reportó <span className="font-normal text-slate-400">(Opcional)</span></label>
+          <div className="relative">
+            <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              className="w-full pl-11 pr-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-slate-400"
+              placeholder="Ej: Juan Perez (Operador Torre 2)"
+              value={formData.reportedBy}
+              onChange={e => setFormData(prev => ({ ...prev, reportedBy: e.target.value }))}
+            />
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700">Área Afectada</label>
@@ -93,7 +122,7 @@ export default function NewIssue() {
               onChange={e => setFormData(prev => ({ ...prev, areaId: e.target.value }))}
             >
               <option value="" className="text-slate-400">Seleccionar área...</option>
-              {AREAS.map(area => (
+              {areas.map(area => (
                 <option key={area.id} value={area.id}>{area.name}</option>
               ))}
             </select>
