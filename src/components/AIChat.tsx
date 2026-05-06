@@ -43,7 +43,7 @@ export default function AIChat() {
       // We prepend a system instruction using a starting model message for the actual contents 
       // array since systemInstruction is part of the model configuration, but we can also just use it directly.
       const response = await ai.models.generateContent({
-        model: 'gemini-3.1-pro-preview',
+        model: 'gemini-2.5-flash',
         contents,
         config: {
            systemInstruction: 'Eres un asistente útil y amigable para el equipo. Ayudas con redacción, soluciones y preguntas generales.'
