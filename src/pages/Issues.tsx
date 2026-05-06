@@ -73,6 +73,58 @@ export default function Issues() {
     issue.userName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportCSV = async () => {
+    setIsExporting(true);
+    try {
+      const rows = [];
+      for (const issue of filteredIssues) {
+        rows.push({
+          'ID': `#${issue.id.slice(-6).toUpperCase()}`,
+          'Folio Origen': '',
+          'Hora': formatDate(issue.createdAt),
+          'Quien Reporto': issue.userName,
+          'Persona Afectada': issue.reportedBy || '',
+          'Area Problema': issue.areaName || issue.areaId || '',
+          'Detalle': `${issue.title} - ${issue.description}`,
+          'Tipo': 'Original',
+          'Estado': issue.status
+        });
+
+        if ((issue.reportsCount || 1) > 1) {
+          const eventsSnapshot = await getDocs(query(collection(db, 'issues', issue.id, 'events'), orderBy('createdAt', 'asc')));
+          const events = eventsSnapshot.docs.map(d => d.data());
+          events.forEach(evt => {
+            if (evt.type === 'comment' && evt.content.includes('Reincidencia reportada por')) {
+              let affectedPerson = '';
+              const match = evt.content.match(/\(Afectado: (.*?)\)/);
+              if (match) affectedPerson = match[1];
+
+              rows.push({
+                'ID': `#${issue.id.slice(-6).toUpperCase()}`,
+                'Folio Origen': `#${issue.id.slice(-6).toUpperCase()}`,
+                'Hora': formatDate(evt.createdAt),
+                'Quien Reporto': evt.userName,
+                'Persona Afectada': affectedPerson,
+                'Area Problema': issue.areaName || issue.areaId || '',
+                'Detalle': `${issue.title} - ${issue.description}`,
+                'Tipo': 'Reincidencia',
+                'Estado': issue.status
+              });
+            }
+          });
+        }
+      }
+      exportToCSV(rows, 'incidencias_ops');
+    } catch (e) {
+      console.error(e);
+      alert('Error exportando CSV');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -83,11 +135,12 @@ export default function Issues() {
 
         <div className="flex flex-wrap items-center gap-3">
           <button 
-            onClick={() => exportToCSV(filteredIssues, 'incidencias_ops')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white text-slate-700 rounded-xl border border-slate-200 hover:bg-slate-50 transition-all font-black uppercase text-xs tracking-widest shadow-sm"
+            onClick={handleExportCSV}
+            disabled={isExporting}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white text-slate-700 rounded-xl border border-slate-200 hover:bg-slate-50 transition-all font-black uppercase text-xs tracking-widest shadow-sm disabled:opacity-50"
           >
             <Download className="w-4 h-4" />
-            Descargar CSV
+            {isExporting ? 'Exportando...' : 'Descargar CSV'}
           </button>
           
           <div className="flex bg-white rounded-2xl border border-slate-200 p-1 shadow-sm">
@@ -186,7 +239,7 @@ const IssueCard: React.FC<{ issue: Issue; onClick: () => void }> = ({ issue, onC
              <div className="w-5 h-5 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center text-[10px] font-black">{issue.userName?.charAt(0) || 'U'}</div>
              <span className="text-xs font-bold text-slate-600 truncate max-w-[120px]">{issue.userName}</span>
           </div>
-          {issue.affectedPeople && issue.affectedPeople.length > 0 && (
+          {Array.isArray(issue.affectedPeople) && issue.affectedPeople.length > 0 && (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-xl border border-blue-100">
                <span className="text-xs font-bold text-blue-700 truncate max-w-[120px]">Afectados: {issue.affectedPeople.join(', ')}</span>
             </div>
@@ -376,7 +429,7 @@ function IssueDetailModal({ issue, onClose }: { issue: Issue, onClose: () => voi
                <InfoTile label="Reportes" value={issue.reportsCount?.toString() || '1'} color={(issue.reportsCount || 1) > 1 ? 'amber' : 'slate'} />
             </div>
 
-            {issue.affectedPeople && issue.affectedPeople.length > 0 && (
+            {Array.isArray(issue.affectedPeople) && issue.affectedPeople.length > 0 && (
               <div className="space-y-4 pt-4">
                 <h4 className="text-sm font-black text-blue-600 uppercase tracking-widest border-b border-blue-100 pb-2">Personas Afectadas</h4>
                 <div className="flex flex-wrap gap-2">
