@@ -4,11 +4,11 @@ import { db } from '../firebase';
 import { useAuth } from '../AuthContext';
 import { Issue, OperationType, UserProfile, Area } from '../types';
 import { handleFirestoreError } from '../constants';
-import { ShieldCheck, MessageSquare, ArrowRight, UserCheck, Search, Users, LayoutGrid, Trash2, Plus, Settings2, Activity, Sparkles, Loader2 } from 'lucide-react';
+import { ShieldCheck, MessageSquare, ArrowRight, UserCheck, Search, Users, LayoutGrid, Trash2, Plus, Settings2, Activity, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, formatDate } from '../lib/utils';
 import DataConfig from '../components/DataConfig';
-import { suggestResolution } from '../services/aiService';
+import { migrateMochisRoutes } from '../services/migrateRoutes';
 
 export default function AdminPanel() {
   const { profile } = useAuth();
@@ -507,6 +507,17 @@ export default function AdminPanel() {
                    </button>
                  ))}
                </div>
+
+               <div className="mt-8 border-t border-slate-100 pt-8">
+                 <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 mb-2">Migración de Datos</h3>
+                 <p className="text-sm text-slate-500 font-medium mb-4">Ejecutar scripts manuales para poblar la base de datos de {selectedAdminGuild}.</p>
+                 <button 
+                   onClick={() => migrateMochisRoutes(selectedAdminGuild)}
+                   className="px-6 py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-md"
+                 >
+                   Poblar Rutas Mochis (101-135)
+                 </button>
+               </div>
              </div>
           </motion.div>
         )}
@@ -531,20 +542,6 @@ function TabButton({ active, onClick, icon: Icon, label }: any) {
 }
 
 function AdminIssueCard({ issue, resolvingId, setResolvingId, resolutionText, setResolutionText, onResolve }: any) {
-  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
-
-  const handleAI = async () => {
-    setIsGeneratingAI(true);
-    try {
-      const suggestion = await suggestResolution(issue.title, issue.description, issue.areaName, issue.categoryName || '');
-      setResolutionText(suggestion);
-    } catch (err) {
-      console.error(err);
-      alert('Error contactando a la IA');
-    } finally {
-      setIsGeneratingAI(false);
-    }
-  };
   return (
      <div className="bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-sm relative overflow-hidden">
         <div className="flex flex-col lg:flex-row gap-10">
@@ -588,14 +585,6 @@ function AdminIssueCard({ issue, resolvingId, setResolvingId, resolutionText, se
                     onChange={e => setResolutionText(e.target.value)}
                   />
                   <div className="flex gap-2 items-center">
-                    <button
-                      onClick={handleAI}
-                      disabled={isGeneratingAI}
-                      className="flex-1 py-4 text-[10px] font-black text-primary-600 hover:bg-primary-50 uppercase tracking-widest rounded-2xl flex items-center justify-center gap-2 transition-all border border-primary-200 disabled:opacity-50"
-                    >
-                      {isGeneratingAI ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                      {isGeneratingAI ? 'Generando...' : 'IA'}
-                    </button>
                     <button onClick={() => setResolvingId(null)} className="flex-1 py-4 text-[10px] font-black text-slate-500 hover:text-slate-900 uppercase">Cancelar</button>
                     <button onClick={onResolve} className="flex-[2] py-4 bg-primary-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-primary-600/20 hover:bg-primary-700 transition-all flex items-center justify-center gap-2">
                        <ArrowRight className="w-4 h-4" />

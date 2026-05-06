@@ -20,7 +20,8 @@ export default function Layout() {
     { name: 'Panel', path: '/', icon: LayoutDashboard },
     { name: 'Incidencias', path: '/issues', icon: ListTodo },
     { name: 'Nueva Incidencia', path: '/new-issue', icon: PlusCircle },
-    { name: 'Cambios', path: '/exchanges', icon: ListTodo }, // Can change icon later
+    { name: 'Cambios', path: '/exchanges', icon: ListTodo },
+    { name: 'Chat General', path: '/chat', icon: MessageSquare },
   ];
 
   if (isAdmin) {
