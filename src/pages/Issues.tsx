@@ -519,11 +519,11 @@ function IssueDetailModal({ issue, onClose }: { issue: Issue, onClose: () => voi
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        className="relative w-full max-w-5xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col md:flex-row h-[90vh]"
+        className="relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row h-[90vh]"
       >
         {/* Left Side: Content */}
-        <div className="flex-1 p-10 overflow-y-auto custom-scrollbar">
-          <div className="flex items-center justify-between mb-8">
+        <div className="flex-1 p-6 md:p-8 overflow-y-auto custom-scrollbar">
+          <div className="flex items-center justify-between mb-6">
             <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
               <X className="w-6 h-6 text-slate-400" />
             </button>

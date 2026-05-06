@@ -52,9 +52,11 @@ export default function AIChat() {
 
       const reply: ChatMessage = { id: (Date.now() + 1).toString(), role: 'model', content: response.text || '' };
       setMessages(prev => [...prev, reply]);
-    } catch (err) {
-      console.error(err);
-      alert('Error contactando a la IA');
+    } catch (err: any) {
+      console.error("AI Error:", err);
+      // Extraemos el mensaje de error para mostrarlo en el alert
+      const errorMessage = err?.message || JSON.stringify(err) || 'Error desconocido';
+      alert(`Error contactando a la IA: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }

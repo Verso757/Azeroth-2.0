@@ -236,7 +236,7 @@ export default function AdminPanel() {
       <AnimatePresence mode="wait">
         {activeTab === 'issues' && (
           <motion.div key="issues" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
-            <div className="bg-primary-600 rounded-[3rem] p-10 text-white shadow-lg shadow-primary-600/20 relative overflow-hidden">
+            <div className="bg-primary-600 rounded-3xl p-6 text-white shadow-lg shadow-primary-600/20 relative overflow-hidden">
                <div className="relative z-10 space-y-2">
                  <p className="text-primary-200 font-black uppercase tracking-[0.3em] text-[10px]">Estatus de Red</p>
                  <div className="flex items-baseline gap-4">
@@ -260,7 +260,7 @@ export default function AdminPanel() {
                 />
               ))}
               {pendingIssues.length === 0 && (
-                <div className="bg-white rounded-[2.5rem] p-20 text-center border-2 border-dashed border-slate-200">
+                <div className="bg-white rounded-3xl p-12 text-center border-2 border-dashed border-slate-200">
                    <CheckCircle2Icon className="w-16 h-16 text-emerald-500 mx-auto mb-6 opacity-50" />
                    <h3 className="text-2xl font-black text-slate-900 uppercase">Sin Pendientes</h3>
                    <p className="text-slate-500 font-medium">Todo el sistema está operando con normalidad.</p>
@@ -271,7 +271,7 @@ export default function AdminPanel() {
         )}
 
         {activeTab === 'users' && (
-          <motion.div key="users" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm">
+          <motion.div key="users" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
@@ -346,7 +346,7 @@ export default function AdminPanel() {
 
         {activeTab === 'areas' && (
           <motion.div key="areas" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
-            <div className="bg-white p-10 rounded-[2.5rem] border border-slate-200 flex flex-col md:flex-row items-center gap-6 shadow-sm text-slate-900">
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 flex flex-col md:flex-row items-center gap-6 shadow-sm text-slate-900">
                <div className="flex-1 space-y-1">
                  <h3 className="text-xl font-black uppercase tracking-tight">Nueva Área/División</h3>
                  <p className="text-sm text-slate-500 font-medium">Define una nueva área operativa.</p>
@@ -367,7 +367,7 @@ export default function AdminPanel() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {areas.map(area => (
-                <div key={area.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm flex items-center justify-between group">
+                  <div key={area.id} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-between group">
                    <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-2xl bg-primary-50 flex items-center justify-center text-primary-600 border border-primary-100">
                          <LayoutGrid className="w-6 h-6" />
@@ -385,7 +385,7 @@ export default function AdminPanel() {
 
         {profile?.role === 'superadmin' && activeTab === 'guilds' && (
           <motion.div key="guilds" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
-            <div className="bg-white p-10 rounded-[2.5rem] border border-slate-200 flex flex-col items-center gap-6 shadow-sm text-slate-900">
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 flex flex-col items-center gap-6 shadow-sm text-slate-900">
                <div className="w-full space-y-1 mb-2">
                  <h3 className="text-xl font-black uppercase tracking-tight">Nueva Empresa / Franquicia</h3>
                  <p className="text-sm text-slate-500 font-medium">Registra una nueva entidad en el sistema multiplataforma.</p>
@@ -413,7 +413,7 @@ export default function AdminPanel() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {guilds.map(guild => (
-                <div key={guild.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm flex items-center justify-between group">
+                <div key={guild.id} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-between group">
                    <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-100">
                          <ShieldCheck className="w-6 h-6" />
@@ -474,7 +474,7 @@ export default function AdminPanel() {
 
         {activeTab === 'settings' && (
           <motion.div key="settings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
-             <div className="bg-white p-10 rounded-[2.5rem] border border-slate-200 shadow-sm text-slate-900">
+             <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm text-slate-900">
                <div className="mb-8">
                  <h3 className="text-xl font-black uppercase tracking-tight">Apariencia del Portal</h3>
                  <p className="text-sm text-slate-500 font-medium">Personaliza el color principal de la plataforma para todo el equipo.</p>
