@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Send, Bot, User, Loader2, X, MessageSquare } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 import { AnimatePresence, motion } from 'motion/react';
+import { useAuth } from '../AuthContext';
+import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
+import { db } from '../firebase';
 
 interface ChatMessage {
   id: string;
@@ -14,6 +17,53 @@ export default function AIChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { profile } = useAuth();
+  const [dbContext, setDbContext] = useState<string>('');
+
+  useEffect(() => {
+    if (!isOpen || !profile) return;
+    
+    // Fetch context data when chat is opened
+    const fetchContext = async () => {
+      try {
+        let q = query(collection(db, 'issues'));
+        if (profile.role !== 'superadmin') {
+          const allGuilds = [profile.guildId, ...(profile.allowedGuilds || [])].filter(Boolean).slice(0, 30);
+          if (allGuilds.length > 0) {
+            q = query(collection(db, 'issues'), where('guildId', 'in', allGuilds));
+          } else {
+             setDbContext("No tienes acceso a ninguna franquicia para ver incidencias.");
+             return;
+          }
+        }
+        
+        const snap = await getDocs(q);
+        const issuesData = snap.docs.map(doc => {
+           const data = doc.data();
+           return {
+              id: doc.id,
+              titulo: data.title,
+              area: data.areaName,
+              prioridad: data.priority,
+              estado: data.status,
+              creadoPor: data.userName,
+              fecha: data.createdAt?.toMillis ? data.createdAt.toMillis() : Date.now()
+           };
+        });
+        
+        // Sort descending by date
+        issuesData.sort((a, b) => b.fecha - a.fecha);
+        // Take top 50
+        const topIssues = issuesData.slice(0, 50);
+        
+        setDbContext(JSON.stringify(topIssues));
+      } catch (err) {
+        console.error("Error fetching context for AI: ", err);
+      }
+    };
+    
+    fetchContext();
+  }, [isOpen, profile]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,13 +90,11 @@ export default function AIChat() {
       }));
       contents.push({ role: 'user', parts: [{ text: newMessage.content }] });
       
-      // We prepend a system instruction using a starting model message for the actual contents 
-      // array since systemInstruction is part of the model configuration, but we can also just use it directly.
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents,
         config: {
-           systemInstruction: 'Eres un asistente útil y amigable para el equipo. Ayudas con redacción, soluciones y preguntas generales.'
+           systemInstruction: `Eres un asistente útil y amigable para el equipo. Ayudas con redacción, soluciones y preguntas generales. \n\nAquí tienes el contexto de las últimas 50 incidencias de la base de datos para responder preguntas del usuario (formato JSON): \n${dbContext}`
         }
       });
 
