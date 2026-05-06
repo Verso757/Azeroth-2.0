@@ -14,7 +14,6 @@ import NewIssue from './pages/NewIssue';
 import AdminPanel from './pages/AdminPanel';
 import Exchanges from './pages/Exchanges';
 import NewExchange from './pages/NewExchange';
-import AIChat from './pages/AIChat';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { profile, loading } = useAuth();
@@ -40,7 +39,6 @@ export default function App() {
             <Route path="new-issue" element={<NewIssue />} />
             <Route path="exchanges" element={<Exchanges />} />
             <Route path="new-exchange" element={<NewExchange />} />
-            <Route path="chat" element={<AIChat />} />
             <Route path="admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
           </Route>
         </Routes>

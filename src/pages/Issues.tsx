@@ -385,7 +385,7 @@ const IssueCard: React.FC<{ issue: Issue; onClick: () => void }> = ({ issue, onC
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -2 }}
       onClick={onClick}
-      className="group bg-white rounded-3xl border border-slate-100 p-6 flex flex-col md:flex-row gap-6 hover:border-primary-200 hover:shadow-xl hover:shadow-primary-900/5 transition-all cursor-pointer relative overflow-hidden"
+      className="group bg-white rounded-2xl border border-slate-100 p-4 flex flex-col md:flex-row gap-4 hover:border-primary-200 hover:shadow-lg hover:shadow-primary-900/5 transition-all cursor-pointer relative overflow-hidden"
     >
       <div className={cn("absolute left-0 top-0 bottom-0 w-1.5", 
         issue.priority === 'critical' ? 'bg-red-500' :
@@ -393,10 +393,10 @@ const IssueCard: React.FC<{ issue: Issue; onClick: () => void }> = ({ issue, onC
         issue.priority === 'medium' ? 'bg-amber-400' : 'bg-slate-300'
       )} />
 
-      <div className="flex-1 space-y-4">
+      <div className="flex-1 space-y-2">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{issue.areaName}</span>
               <div className={cn(
                 "flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border",
@@ -406,7 +406,7 @@ const IssueCard: React.FC<{ issue: Issue; onClick: () => void }> = ({ issue, onC
                 {status.label}
               </div>
             </div>
-            <h3 className="text-xl font-black text-slate-900 group-hover:text-primary-600 transition-colors uppercase leading-none">{issue.title}</h3>
+            <h3 className="text-base font-black text-slate-900 group-hover:text-primary-600 transition-colors uppercase leading-tight">{issue.title}</h3>
           </div>
           <div className="text-right">
              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter block">{formatDate(issue.createdAt)}</span>
@@ -417,8 +417,8 @@ const IssueCard: React.FC<{ issue: Issue; onClick: () => void }> = ({ issue, onC
           "{issue.description}"
         </p>
 
-        <div className="flex flex-wrap items-center gap-4 pt-2">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-100">
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <div className="flex items-center gap-2 px-2.5 py-1 bg-slate-50 rounded-lg border border-slate-100">
              <div className="w-5 h-5 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center text-[10px] font-black">{issue.userName?.charAt(0) || 'U'}</div>
              <span className="text-xs font-bold text-slate-600 truncate max-w-[120px]">{issue.userName}</span>
           </div>

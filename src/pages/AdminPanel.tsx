@@ -8,7 +8,6 @@ import { ShieldCheck, MessageSquare, ArrowRight, UserCheck, Search, Users, Layou
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, formatDate } from '../lib/utils';
 import DataConfig from '../components/DataConfig';
-import { migrateMochisRoutes } from '../services/migrateRoutes';
 
 export default function AdminPanel() {
   const { profile } = useAuth();
@@ -507,17 +506,6 @@ export default function AdminPanel() {
                    </button>
                  ))}
                </div>
-
-               <div className="mt-8 border-t border-slate-100 pt-8">
-                 <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 mb-2">Migración de Datos</h3>
-                 <p className="text-sm text-slate-500 font-medium mb-4">Ejecutar scripts manuales para poblar la base de datos de {selectedAdminGuild}.</p>
-                 <button 
-                   onClick={() => migrateMochisRoutes(selectedAdminGuild)}
-                   className="px-6 py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-md"
-                 >
-                   Poblar Rutas Mochis (101-135)
-                 </button>
-               </div>
              </div>
           </motion.div>
         )}
@@ -543,50 +531,50 @@ function TabButton({ active, onClick, icon: Icon, label }: any) {
 
 function AdminIssueCard({ issue, resolvingId, setResolvingId, resolutionText, setResolutionText, onResolve }: any) {
   return (
-     <div className="bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-sm relative overflow-hidden">
-        <div className="flex flex-col lg:flex-row gap-10">
-          <div className="flex-1 space-y-6">
-             <div className="flex items-center gap-4">
+     <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
+        <div className="flex flex-col lg:flex-row gap-6">
+          <div className="flex-1 space-y-4">
+             <div className="flex items-center gap-3">
                 <span className={cn(
                   "px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest border",
                   issue.priority === 'critical' ? 'bg-red-50 border-red-200 text-red-600' : 'bg-slate-50 border-slate-200 text-slate-600'
                 )}>
                   {issue.priority}
                 </span>
-                <span className="text-xs font-black text-primary-600 uppercase tracking-[0.2em]">{issue.areaName}</span>
+                <span className="text-[10px] font-black text-primary-600 uppercase tracking-[0.2em]">{issue.areaName}</span>
                 <div className="h-px flex-1 bg-slate-100" />
              </div>
              
              <div>
-                <h4 className="text-3xl font-black text-slate-900 leading-tight uppercase mb-2">{issue.title}</h4>
-                <div className="flex items-center gap-4">
-                  <div className="w-8 h-8 rounded-lg bg-primary-50 border border-primary-100 flex items-center justify-center text-primary-600 text-xs font-black">
+                <h4 className="text-xl font-black text-slate-900 leading-tight uppercase mb-2">{issue.title}</h4>
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-md bg-primary-50 border border-primary-100 flex items-center justify-center text-primary-600 text-[10px] font-black">
                      {issue.userName?.charAt(0)}
                   </div>
-                  <p className="text-sm font-bold text-slate-400 uppercase tracking-tighter">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-tighter">
                      Reportado por: <span className="text-slate-600">{issue.userName}</span> • {formatDate(issue.createdAt)}
                   </p>
                 </div>
              </div>
 
-             <div className="bg-slate-50 p-6 rounded-[2rem] border-l-4 border-primary-600 text-slate-600 font-medium italic">
+             <div className="bg-slate-50 p-4 rounded-2xl border-l-4 border-primary-600 text-slate-600 text-sm font-medium italic">
                 "{issue.description}"
              </div>
           </div>
 
-          <div className="lg:w-[400px] flex flex-col justify-end">
+          <div className="lg:w-[320px] flex flex-col justify-end">
             <AnimatePresence mode="wait">
               {resolvingId === issue.id ? (
                 <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="space-y-4">
                    <textarea
                     placeholder="Escribe la resolución de la incidencia..."
-                    className="w-full p-6 rounded-[2rem] bg-white border border-slate-200 text-slate-900 text-sm font-medium focus:ring-2 focus:ring-primary-500 outline-none resize-none min-h-[140px] placeholder:text-slate-400"
+                    className="w-full p-4 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm font-medium focus:ring-2 focus:ring-primary-500 outline-none resize-none min-h-[100px] placeholder:text-slate-400"
                     value={resolutionText}
                     onChange={e => setResolutionText(e.target.value)}
                   />
                   <div className="flex gap-2 items-center">
-                    <button onClick={() => setResolvingId(null)} className="flex-1 py-4 text-[10px] font-black text-slate-500 hover:text-slate-900 uppercase">Cancelar</button>
-                    <button onClick={onResolve} className="flex-[2] py-4 bg-primary-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-primary-600/20 hover:bg-primary-700 transition-all flex items-center justify-center gap-2">
+                    <button onClick={() => setResolvingId(null)} className="flex-1 py-3 text-[10px] font-black text-slate-500 hover:text-slate-900 uppercase">Cancelar</button>
+                    <button onClick={onResolve} className="flex-[2] py-3 bg-primary-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-md shadow-primary-600/20 hover:bg-primary-700 transition-all flex items-center justify-center gap-2">
                        <ArrowRight className="w-4 h-4" />
                        Cerrar Caso
                     </button>
@@ -595,10 +583,10 @@ function AdminIssueCard({ issue, resolvingId, setResolvingId, resolutionText, se
               ) : (
                 <button
                   onClick={() => setResolvingId(issue.id)}
-                  className="w-full py-6 bg-slate-50 hover:bg-primary-600 hover:text-white text-slate-600 rounded-[2rem] border border-slate-200 font-black uppercase tracking-widest transition-all flex flex-col items-center gap-2 group"
+                  className="w-full py-4 bg-slate-50 hover:bg-primary-600 hover:text-white text-slate-600 rounded-2xl border border-slate-200 font-black uppercase tracking-widest transition-all flex flex-col items-center gap-2 group"
                 >
-                  <Activity className="w-8 h-8 text-primary-500 group-hover:text-white transition-colors" />
-                  Atender Reporte
+                  <Activity className="w-6 h-6 text-primary-500 group-hover:text-white transition-colors" />
+                  <span className="text-xs">Atender Reporte</span>
                 </button>
               )}
             </AnimatePresence>

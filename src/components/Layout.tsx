@@ -4,6 +4,7 @@ import { useAuth } from '../AuthContext';
 import { LayoutDashboard, ListTodo, LogOut, PlusCircle, ShieldAlert, Menu, X, User, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
+import AIChat from './AIChat';
 
 export default function Layout() {
   const { profile, logout, isAdmin } = useAuth();
@@ -21,7 +22,6 @@ export default function Layout() {
     { name: 'Incidencias', path: '/issues', icon: ListTodo },
     { name: 'Nueva Incidencia', path: '/new-issue', icon: PlusCircle },
     { name: 'Cambios', path: '/exchanges', icon: ListTodo },
-    { name: 'Chat General', path: '/chat', icon: MessageSquare },
   ];
 
   if (isAdmin) {
@@ -176,6 +176,7 @@ export default function Layout() {
           <Outlet />
         </motion.div>
       </main>
+      <AIChat />
     </div>
   );
 }
