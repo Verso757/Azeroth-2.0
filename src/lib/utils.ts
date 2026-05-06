@@ -10,12 +10,14 @@ export function formatDate(date: any) {
   let d: Date;
   if (date.toDate && typeof date.toDate === 'function') {
     d = date.toDate();
+  } else if (date && typeof date.seconds === 'number') {
+    d = new Date(date.seconds * 1000);
   } else if (typeof date === 'string' || typeof date === 'number') {
     d = new Date(date);
   } else if (date instanceof Date) {
     d = date;
   } else {
-    return '';
+    return String(date);
   }
   return d.toLocaleDateString('es-ES', {
     day: '2-digit',

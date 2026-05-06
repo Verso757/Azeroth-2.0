@@ -7,6 +7,8 @@ import { handleFirestoreError } from '../constants';
 import { Filter, Search, Clock, CheckCircle2, AlertTriangle, MoreHorizontal, XCircle, MessageSquare, UserPlus, ArrowRight, Tag, ChevronRight, X, Download, PlusSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, formatDate, exportToCSV } from '../lib/utils';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const STATUS_LABELS = {
   open: { label: 'Abierto', color: 'text-primary-700 bg-primary-50 border-primary-200', icon: Clock },
@@ -21,6 +23,8 @@ export default function Issues() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'mine' | 'assigned'>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
 
   useEffect(() => {
@@ -67,11 +71,29 @@ export default function Issues() {
     return () => unsubscribe();
   }, [profile, isAdmin, filter]);
 
-  const filteredIssues = issues.filter(issue => 
-    issue.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    issue.areaName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    issue.userName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredIssues = issues.filter(issue => {
+    const matchesSearch = issue.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          issue.areaName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          issue.userName.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    if (!matchesSearch) return false;
+
+    if (!issue.createdAt) return true;
+    const date = issue.createdAt.toDate ? issue.createdAt.toDate() : new Date(issue.createdAt);
+    
+    if (startDate) {
+      const startD = new Date(startDate);
+      startD.setHours(0, 0, 0, 0);
+      if (date < startD) return false;
+    }
+    if (endDate) {
+      const endD = new Date(endDate);
+      endD.setHours(23, 59, 59, 999);
+      if (date > endD) return false;
+    }
+    
+    return true;
+  });
 
   const [isExporting, setIsExporting] = useState(false);
 
@@ -79,9 +101,12 @@ export default function Issues() {
     setIsExporting(true);
     try {
       const rows = [];
+      let idCounter = 1;
+      
       for (const issue of filteredIssues) {
+        const originalId = idCounter;
         rows.push({
-          'ID': `#${issue.id.slice(-6).toUpperCase()}`,
+          'ID': originalId,
           'Folio Origen': '',
           'Hora': formatDate(issue.createdAt),
           'Quien Reporto': issue.userName,
@@ -91,6 +116,7 @@ export default function Issues() {
           'Tipo': 'Original',
           'Estado': issue.status
         });
+        idCounter++;
 
         if ((issue.reportsCount || 1) > 1) {
           const eventsSnapshot = await getDocs(query(collection(db, 'issues', issue.id, 'events'), orderBy('createdAt', 'asc')));
@@ -102,8 +128,8 @@ export default function Issues() {
               if (match) affectedPerson = match[1];
 
               rows.push({
-                'ID': `#${issue.id.slice(-6).toUpperCase()}`,
-                'Folio Origen': `#${issue.id.slice(-6).toUpperCase()}`,
+                'ID': idCounter,
+                'Folio Origen': `Ref a #${originalId}`,
                 'Hora': formatDate(evt.createdAt),
                 'Quien Reporto': evt.userName,
                 'Persona Afectada': affectedPerson,
@@ -112,6 +138,7 @@ export default function Issues() {
                 'Tipo': 'Reincidencia',
                 'Estado': issue.status
               });
+              idCounter++;
             }
           });
         }
@@ -120,6 +147,82 @@ export default function Issues() {
     } catch (e) {
       console.error(e);
       alert('Error exportando CSV');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    setIsExporting(true);
+    try {
+      const rows = [];
+      let idCounter = 1;
+      
+      for (const issue of filteredIssues) {
+        const originalId = idCounter;
+        rows.push([
+          originalId,
+          '', // Folio Origen
+          formatDate(issue.createdAt),
+          issue.userName,
+          (Array.isArray(issue.affectedPeople) ? issue.affectedPeople.join(', ') : issue.reportedBy || ''),
+          issue.areaName || issue.areaId || '',
+          `${issue.title}\n${issue.description.slice(0, 50)}...`,
+          'Original',
+          issue.status
+        ]);
+        idCounter++;
+
+        if ((issue.reportsCount || 1) > 1) {
+          const eventsSnapshot = await getDocs(query(collection(db, 'issues', issue.id, 'events'), orderBy('createdAt', 'asc')));
+          const events = eventsSnapshot.docs.map(d => d.data());
+          events.forEach(evt => {
+            if (evt.type === 'comment' && evt.content.includes('Reincidencia reportada por')) {
+              let affectedPerson = '';
+              const match = evt.content.match(/\(Afectado: (.*?)\)/);
+              if (match) affectedPerson = match[1];
+
+              rows.push([
+                idCounter,
+                `Ref a #${originalId}`,
+                formatDate(evt.createdAt),
+                evt.userName,
+                affectedPerson,
+                issue.areaName || issue.areaId || '',
+                `${issue.title} (Reincidencia)`,
+                'Reincidencia',
+                issue.status
+              ]);
+              idCounter++;
+            }
+          });
+        }
+      }
+      
+      const doc = new jsPDF('landscape');
+      
+      doc.setFontSize(18);
+      doc.text('Reporte de Incidencias Operativas', 14, 22);
+      doc.setFontSize(11);
+      doc.setTextColor(100);
+      doc.text(`Generado el: ${new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`, 14, 30);
+      
+      autoTable(doc, {
+        startY: 36,
+        head: [['ID', 'Origen', 'Hora', 'Reportó', 'Afectado', 'Área', 'Detalle', 'Tipo', 'Estado']],
+        body: rows,
+        styles: { fontSize: 8, cellPadding: 3 },
+        headStyles: { fillColor: [59, 130, 246] },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        columnStyles: {
+          6: { cellWidth: 50 }
+        }
+      });
+      
+      doc.save('incidencias_ops.pdf');
+    } catch (e) {
+      console.error(e);
+      alert('Error exportando PDF');
     } finally {
       setIsExporting(false);
     }
@@ -134,14 +237,76 @@ export default function Issues() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <button 
-            onClick={handleExportCSV}
-            disabled={isExporting}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white text-slate-700 rounded-xl border border-slate-200 hover:bg-slate-50 transition-all font-black uppercase text-xs tracking-widest shadow-sm disabled:opacity-50"
-          >
-            <Download className="w-4 h-4" />
-            {isExporting ? 'Exportando...' : 'Descargar CSV'}
-          </button>
+          <div className="flex bg-white rounded-2xl border border-slate-200 p-2 shadow-sm gap-2">
+             <div className="flex items-center gap-2 px-2">
+               <Clock className="w-4 h-4 text-slate-400" />
+               <input 
+                 type="date" 
+                 value={startDate}
+                 onChange={(e) => setStartDate(e.target.value)}
+                 className="text-xs font-bold text-slate-600 outline-none bg-transparent"
+               />
+             </div>
+             <span className="text-slate-300">-</span>
+             <div className="flex items-center gap-2 px-2">
+               <input 
+                 type="date" 
+                 value={endDate}
+                 onChange={(e) => setEndDate(e.target.value)}
+                 className="text-xs font-bold text-slate-600 outline-none bg-transparent"
+               />
+             </div>
+             {(startDate || endDate) && (
+               <button 
+                 onClick={() => { setStartDate(''); setEndDate(''); }}
+                 className="text-[10px] text-red-500 hover:text-red-700 font-bold px-2 uppercase"
+               >
+                 Limpiar
+               </button>
+             )}
+             <button 
+               onClick={() => { 
+                 const now = new Date();
+                 const day = now.getDay() || 7;
+                 const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1);
+                 setStartDate(start.toISOString().split('T')[0]);
+                 setEndDate(new Date().toISOString().split('T')[0]);
+               }}
+               className="text-[10px] text-blue-500 hover:text-blue-700 font-bold px-2 uppercase border-l border-slate-100"
+             >
+               Semana
+             </button>
+             <button 
+               onClick={() => { 
+                 const now = new Date();
+                 const start = new Date(now.getFullYear(), now.getMonth(), 1);
+                 setStartDate(start.toISOString().split('T')[0]);
+                 setEndDate(new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]);
+               }}
+               className="text-[10px] text-blue-500 hover:text-blue-700 font-bold px-2 uppercase border-l border-slate-100"
+             >
+               Mes
+             </button>
+          </div>
+
+          <div className="flex bg-white rounded-2xl border border-slate-200 p-1 shadow-sm gap-1">
+            <button 
+              onClick={handleExportCSV}
+              disabled={isExporting}
+              className="flex items-center gap-2 px-3 py-1.5 text-slate-600 rounded-xl hover:bg-slate-50 transition-all font-black uppercase text-[10px] tracking-widest disabled:opacity-50"
+            >
+              <Download className="w-3 h-3" />
+              CSV
+            </button>
+            <button 
+              onClick={handleExportPDF}
+              disabled={isExporting}
+              className="flex items-center gap-2 px-3 py-1.5 text-blue-600 rounded-xl hover:bg-blue-50 transition-all font-black uppercase text-[10px] tracking-widest disabled:opacity-50"
+            >
+              <Download className="w-3 h-3" />
+              PDF
+            </button>
+          </div>
           
           <div className="flex bg-white rounded-2xl border border-slate-200 p-1 shadow-sm">
             <button onClick={() => setFilter('all')} className={cn("px-4 py-2 text-xs font-bold rounded-xl transition-all uppercase tracking-widest", filter === 'all' ? "bg-primary-600 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900")}>Todas</button>
