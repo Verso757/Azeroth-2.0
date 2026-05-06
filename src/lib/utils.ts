@@ -5,8 +5,18 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatDate(date: string | Date) {
-  const d = typeof date === 'string' ? new Date(date) : date;
+export function formatDate(date: any) {
+  if (!date) return '';
+  let d: Date;
+  if (date.toDate && typeof date.toDate === 'function') {
+    d = date.toDate();
+  } else if (typeof date === 'string' || typeof date === 'number') {
+    d = new Date(date);
+  } else if (date instanceof Date) {
+    d = date;
+  } else {
+    return '';
+  }
   return d.toLocaleDateString('es-ES', {
     day: '2-digit',
     month: '2-digit',
