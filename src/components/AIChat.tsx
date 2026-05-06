@@ -43,18 +43,23 @@ export default function AIChat() {
            return {
               id: doc.id,
               titulo: data.title,
-              area: data.areaName,
+              area_o_ruta: data.areaName,
               prioridad: data.priority,
               estado: data.status,
               creadoPor: data.userName,
-              fecha: data.createdAt?.toMillis ? data.createdAt.toMillis() : Date.now()
+              fechaDate: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
+              fecha: data.createdAt?.toDate ? data.createdAt.toDate().toLocaleString('es-MX') : new Date().toLocaleString('es-MX')
            };
         });
         
         // Sort descending by date
-        issuesData.sort((a, b) => b.fecha - a.fecha);
-        // Take top 50
-        const topIssues = issuesData.slice(0, 50);
+        issuesData.sort((a, b) => b.fechaDate.getTime() - a.fechaDate.getTime());
+        
+        // Take top 300 to give the AI plenty of data to do aggregations
+        const topIssues = issuesData.slice(0, 300).map(i => {
+          const { fechaDate, ...rest } = i;
+          return rest;
+        });
         
         setDbContext(JSON.stringify(topIssues));
       } catch (err) {
@@ -94,7 +99,7 @@ export default function AIChat() {
         model: 'gemini-2.5-flash',
         contents,
         config: {
-           systemInstruction: `Eres un asistente útil y amigable para el equipo. Ayudas con redacción, soluciones y preguntas generales. \n\nAquí tienes el contexto de las últimas 50 incidencias de la base de datos para responder preguntas del usuario (formato JSON): \n${dbContext}`
+           systemInstruction: `Eres un asistente experto en análisis de datos para esta empresa. TIENES ACCESO a la base de datos de incidencias a través del siguiente JSON. NO DIGAS "no tengo acceso", usa estos datos para responder TODO lo que se te pregunte (últimas incidencias, agrupaciones por ruta, quién reportó más, etc.). Realiza los cálculos y conteos internamente y responde de forma natural al usuario. \n\nDATOS DE INCIDENCIAS (Últimas 300):\n${dbContext}`
         }
       });
 
