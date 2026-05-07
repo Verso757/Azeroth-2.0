@@ -36,15 +36,15 @@ export default function NewExchange() {
         
         // Fetch cities
         const citySnap = await getDocs(query(collection(db, 'cities'), where('guildId', 'in', adminGuilds)));
-        setCities(citySnap.docs.map(d => ({ id: d.id, ...d.data() } as City)));
+        setCities(citySnap.docs.map(d => ({ id: d.id, ...d.data() } as City)).sort((a,b) => (a.name || '').localeCompare(b.name || '')));
 
         // Fetch brands
         const brandSnap = await getDocs(query(collection(db, 'brands'), where('guildId', 'in', adminGuilds)));
-        setBrands(brandSnap.docs.map(d => ({ id: d.id, ...d.data() } as Brand)));
+        setBrands(brandSnap.docs.map(d => ({ id: d.id, ...d.data() } as Brand)).sort((a,b) => (a.name || '').localeCompare(b.name || '')));
 
         // Fetch motifs
         const motifSnap = await getDocs(query(collection(db, 'motifs'), where('guildId', 'in', adminGuilds)));
-        setMotifs(motifSnap.docs.map(d => ({ id: d.id, ...d.data() } as Motif)));
+        setMotifs(motifSnap.docs.map(d => ({ id: d.id, ...d.data() } as Motif)).sort((a,b) => (a.name || '').localeCompare(b.name || '')));
       } catch (e) {
         console.error(e);
       }

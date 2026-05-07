@@ -107,73 +107,69 @@ export default function Exchanges() {
           <script src="https://cdn.tailwindcss.com"></script>
           <style>
             @media print {
-              @page { margin: 15mm; }
+              @page { margin: 10mm; size: letter; }
               body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             }
           </style>
         </head>
-        <body class="p-8 text-slate-800 font-sans">
-          <div class="max-w-4xl mx-auto border border-slate-200 rounded-[2rem] p-12 relative overflow-hidden shadow-sm">
-            <!-- decorative background -->
-            <div class="absolute top-0 right-0 w-[500px] h-[500px] bg-red-50/50 rounded-full blur-3xl -z-10 -translate-y-1/2 translate-x-1/2"></div>
+        <body class="p-4 text-slate-800 font-sans">
+          <div class="max-w-4xl mx-auto border border-slate-200 rounded-3xl p-8 relative overflow-hidden shadow-sm">
+            <div class="absolute top-0 right-0 w-[400px] h-[400px] bg-red-50/50 rounded-full blur-3xl -z-10 -translate-y-1/2 translate-x-1/2"></div>
             
-            <div class="flex justify-between items-start mb-12 border-b-2 border-slate-100 pb-10">
+            <div class="flex justify-between items-start mb-8 border-b-2 border-slate-100 pb-6">
               <div>
-                <!-- Simulated YAQUI Logo using CSS matching image design -->
-                <div class="w-40 h-32 rounded-[2rem] bg-[#E3182D] flex items-center justify-center relative overflow-hidden shadow-md">
-                    <div class="absolute inset-0 top-[35%] bottom-[35%] bg-white transform rotate-[-8deg] scale-110"></div>
-                    <span class="relative z-10 text-[2.5rem] font-black text-[#004B87] tracking-tighter" style="font-family: Arial, Helvetica, sans-serif;">YAQUi</span>
-                </div>
+                <img src="/Logo.png" alt="Yaqui Logo" class="h-24 w-auto object-contain" onerror="this.outerHTML='<div class=\\'h-24 flex items-center justify-center\\'><span class=\\'text-4xl font-black text-[#004B87] tracking-tighter\\'>YAQUi</span></div>'" />
               </div>
               <div class="text-right mt-2">
-                <h1 class="text-3xl font-black text-slate-900 uppercase tracking-tighter">Responsiva de Equipo</h1>
-                <p class="text-slate-500 font-bold mt-3 text-lg">Folio: <span class="text-slate-800">${ex.id.slice(0, 8).toUpperCase()}</span></p>
-                <p class="text-slate-500 font-medium mt-1">Fecha: <span class="text-slate-800">${formatDate(ex.createdAt)}</span></p>
+                <h1 class="text-2xl font-black text-slate-900 uppercase tracking-tighter">Responsiva de Equipo</h1>
+                <p class="text-slate-500 font-bold mt-2">Folio: <span class="text-slate-800">${ex.id.slice(0, 8).toUpperCase()}</span></p>
+                <p class="text-slate-500 font-medium">Fecha: <span class="text-slate-800">${formatDate(ex.createdAt)}</span></p>
               </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-8 mb-12">
-              <div class="bg-slate-50 p-8 rounded-3xl border border-slate-200">
-                <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Datos del Destinatario</h3>
-                <p class="text-xl font-bold text-slate-900 mb-2">${ex.affectedPerson}</p>
-                <p class="text-sm font-medium text-slate-500 mt-3">Sucursal / Ciudad: <span class="text-slate-800 font-bold ml-1">${ex.cityName}</span></p>
-                <p class="text-sm font-medium text-slate-500 mt-1">Ruta: <span class="text-slate-800 font-bold ml-1">${ex.routeName}</span></p>
+            <div class="grid grid-cols-2 gap-6 mb-8">
+              <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Datos del Destinatario</h3>
+                <p class="text-lg font-bold text-slate-900 mb-1">${ex.affectedPerson}</p>
+                <p class="text-xs font-medium text-slate-500 mt-2">Sucursal / Ciudad: <span class="text-slate-800 font-bold ml-1">${ex.cityName}</span></p>
+                <p class="text-xs font-medium text-slate-500 mt-1">Ruta: <span class="text-slate-800 font-bold ml-1">${ex.routeName}</span></p>
               </div>
-              <div class="bg-blue-50/50 p-8 rounded-3xl border border-blue-100">
-                <h3 class="text-xs font-black text-blue-400 uppercase tracking-widest mb-4">Detalles del Equipo</h3>
-                <p class="text-xl font-bold text-[#004B87] mb-2">${ex.equipmentType}</p>
-                <p class="text-sm font-medium text-slate-500 mt-3">Marca / Modelo: <span class="text-slate-800 font-bold ml-1">${ex.brandName}</span></p>
-                <p class="text-sm font-medium text-slate-500 mt-1">Motivo de Cambio: <span class="text-slate-800 font-bold ml-1">${ex.motifName}</span></p>
-                ${ex.price ? `<div class="mt-4 inline-flex items-center gap-2 bg-[#E3182D]/10 text-[#E3182D] px-3 py-1.5 rounded-xl border border-[#E3182D]/20"><span class="text-xs font-black uppercase tracking-wider">Valor Declarado:</span><span class="text-sm font-black">$${ex.price.toFixed(2)} MXN</span></div>` : ''}
+              <div class="bg-blue-50/50 p-6 rounded-2xl border border-blue-100">
+                <h3 class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-3">Detalles del Equipo</h3>
+                <p class="text-lg font-bold text-[#004B87] mb-1">${ex.equipmentType}</p>
+                <p class="text-xs font-medium text-slate-500 mt-2">Marca / Modelo: <span class="text-slate-800 font-bold ml-1">${ex.brandName}</span></p>
+                <p class="text-xs font-medium text-slate-500 mt-1">Motivo de Cambio: <span class="text-slate-800 font-bold ml-1">${ex.motifName}</span></p>
+                ${ex.price ? `<div class="mt-3 inline-flex items-center gap-2 bg-[#E3182D]/10 text-[#E3182D] px-2.5 py-1.5 rounded-lg border border-[#E3182D]/20"><span class="text-[10px] font-black uppercase tracking-wider">Valor Declarado:</span><span class="text-xs font-black">$${ex.price.toFixed(2)} MXN</span></div>` : ''}
               </div>
             </div>
 
-            <div class="bg-white border-2 border-slate-100 rounded-3xl p-8 italic text-slate-600 leading-relaxed mb-24 shadow-sm text-lg font-medium text-justify">
+            <div class="bg-white border-2 border-slate-100 rounded-2xl p-6 italic text-slate-600 leading-relaxed mb-16 shadow-sm text-base text-justify">
               "Yo <span class="font-bold text-slate-900 not-italic border-b-2 border-slate-200">${ex.affectedPerson}</span> me hago responsable del equipo descrito anteriormente, el cual se me ha sido asignado por motivo de <span class="font-bold text-slate-900 not-italic">${ex.motifName}</span>. 
               <br/><br/>
               Me comprometo a cuidar y mantener en buen estado este equipo, utilizándolo exclusivamente para las actividades correspondientes a mis funciones operativas, y devolverlo en las mismas condiciones al ser requerido. En caso de daño por negligencia, mal uso o extravío, asumo la responsabilidad administrativa y económica correspondiente según las políticas establecidas por la empresa."
             </div>
 
-            <div class="grid grid-cols-2 gap-16 px-12">
+            <div class="grid grid-cols-2 gap-12 px-8">
               <div class="text-center">
-                <div class="h-0.5 bg-slate-300 w-full mb-4"></div>
-                <p class="font-black text-slate-900 text-lg">${ex.affectedPerson}</p>
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Recibe (Nombre y Firma)</p>
+                <div class="h-px bg-slate-300 w-full mb-3"></div>
+                <p class="font-bold text-slate-900 text-sm">${ex.affectedPerson}</p>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Recibe (Nombre y Firma)</p>
               </div>
               <div class="text-center">
-                <div class="h-0.5 bg-slate-300 w-full mb-4"></div>
-                <p class="font-black text-slate-900 text-lg">${ex.userName}</p>
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Entrega (Nombre y Firma)</p>
+                <div class="h-px bg-slate-300 w-full mb-3"></div>
+                <p class="font-bold text-slate-900 text-sm">${ex.userName}</p>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Entrega (Nombre y Firma)</p>
               </div>
             </div>
             
-            <div class="mt-20 pt-8 border-t border-slate-100 text-center text-[10px] font-black text-slate-300 uppercase tracking-widest flex items-center justify-center gap-4">
+            <div class="mt-12 pt-6 border-t border-slate-100 text-center text-[9px] font-bold text-slate-300 uppercase tracking-widest flex items-center justify-center gap-3">
               <span>Documento generado por el Sistema de Control Operativo</span>
               <span>•</span>
               <span>Propiedad de la Empresa</span>
             </div>
           </div>
           <script>
+            // Wait slightly for image to load
             setTimeout(() => {
               window.print();
               setTimeout(() => { window.close(); }, 500);

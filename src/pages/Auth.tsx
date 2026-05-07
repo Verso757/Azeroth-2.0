@@ -45,8 +45,8 @@ export default function AuthPage() {
         className="max-w-md w-full bg-white rounded-[2.5rem] shadow-sm p-10 border border-slate-100"
       >
         <div className="text-center mb-8">
-          <div className="inline-flex w-24 h-24 rounded-[2rem] bg-white text-primary-600 mb-6 border border-slate-100 shadow-xl overflow-hidden relative items-center justify-center">
-            <LogoIcon className="w-[125%] h-[125%]" />
+          <div className="inline-flex w-24 h-24 rounded-[2rem] bg-white text-primary-600 mb-6 border border-slate-100 shadow-xl overflow-hidden relative items-center justify-center p-3">
+            <img src="/Logo.png" alt="Yaqui Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-3xl font-black text-slate-900 tracking-tight">Azeroth</h1>
           <p className="text-slate-500 mt-2 font-medium text-sm">Gestión Operativa e Incidencias</p>

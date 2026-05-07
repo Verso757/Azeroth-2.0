@@ -35,9 +35,9 @@ export default function Layout() {
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100 px-6 md:px-12 py-4 shadow-sm">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3 group">
-            {/* LOGO: The image will load from /public/logo.png. By default it shows an icon if not found. */}
-            <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center text-white shadow-lg shadow-primary-200 group-hover:scale-105 transition-transform overflow-hidden border border-slate-100">
-              <LogoIcon className="w-12 h-12" />
+            {/* LOGO: The image will load from /public/Logo.png. By default it shows an icon if not found. */}
+            <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center text-white shadow-lg shadow-primary-200 group-hover:scale-105 transition-transform overflow-hidden border border-slate-100 p-1">
+              <img src="/Logo.png" alt="Yaqui Logo" className="w-full h-full object-contain" />
             </div>
             <span className="text-xl font-black text-slate-900 tracking-tight">Azeroth</span>
           </Link>
@@ -115,8 +115,8 @@ export default function Layout() {
             >
               <div className="flex items-center justify-between mb-10">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center text-white shadow-sm border border-slate-100 overflow-hidden">
-                    <LogoIcon className="w-12 h-12" />
+                  <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center text-white shadow-sm border border-slate-100 overflow-hidden p-1">
+                    <img src="/Logo.png" alt="Yaqui Logo" className="w-full h-full object-contain" />
                   </div>
                   <span className="text-xl font-bold text-slate-900 tracking-tight">Azeroth</span>
                 </div>

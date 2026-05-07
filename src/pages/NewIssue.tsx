@@ -50,13 +50,13 @@ export default function NewIssue() {
   useEffect(() => {
     if (!selectedGuild) return;
     const unsubAreas = onSnapshot(query(collection(db, 'areas'), where('guildId', '==', selectedGuild)), snap => {
-      setAreas(snap.docs.map(d => ({ id: d.id, ...d.data() } as Area)));
+      setAreas(snap.docs.map(d => ({ id: d.id, ...d.data() } as Area)).sort((a,b) => (a.name || '').localeCompare(b.name || '')));
     });
     const unsubCities = onSnapshot(query(collection(db, 'cities'), where('guildId', '==', selectedGuild)), snap => {
-      setCities(snap.docs.map(d => ({ id: d.id, ...d.data() } as City)));
+      setCities(snap.docs.map(d => ({ id: d.id, ...d.data() } as City)).sort((a,b) => (a.name || '').localeCompare(b.name || '')));
     });
     const unsubCat = onSnapshot(query(collection(db, 'categories'), where('guildId', '==', selectedGuild)), snap => {
-      setCategories(snap.docs.map(d => ({ id: d.id, ...d.data() } as Category)));
+      setCategories(snap.docs.map(d => ({ id: d.id, ...d.data() } as Category)).sort((a,b) => (a.name || '').localeCompare(b.name || '')));
     });
 
     return () => { unsubAreas(); unsubCities(); unsubCat(); }
