@@ -129,7 +129,7 @@ export default function Exchanges() {
 
             <div class="grid grid-cols-2 gap-6 mb-8">
               <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200">
-                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Datos del Destinatario</h3>
+                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Datos del Asesor</h3>
                 <p class="text-lg font-bold text-slate-900 mb-1">${ex.affectedPerson}</p>
                 <p class="text-xs font-medium text-slate-500 mt-2">Sucursal / Ciudad: <span class="text-slate-800 font-bold ml-1">${ex.cityName}</span></p>
                 <p class="text-xs font-medium text-slate-500 mt-1">Ruta: <span class="text-slate-800 font-bold ml-1">${ex.routeName}</span></p>
@@ -151,14 +151,14 @@ export default function Exchanges() {
 
             <div class="grid grid-cols-2 gap-12 px-8">
               <div class="text-center">
-                <div class="h-px bg-slate-300 w-full mb-3"></div>
-                <p class="font-bold text-slate-900 text-sm">${ex.affectedPerson}</p>
-                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Recibe (Nombre y Firma)</p>
+                <div class="h-px bg-slate-300 w-full mb-3 mt-10"></div>
+                <p class="font-bold text-slate-900 text-sm h-5">${ex.affectedPerson}</p>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Asesor (Nombre y Firma)</p>
               </div>
               <div class="text-center">
-                <div class="h-px bg-slate-300 w-full mb-3"></div>
-                <p class="font-bold text-slate-900 text-sm">${ex.userName}</p>
-                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Entrega (Nombre y Firma)</p>
+                <div class="h-px bg-slate-300 w-full mb-3 mt-10"></div>
+                <p class="font-bold text-slate-900 text-sm h-5"></p>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Ruta (Nombre y Firma)</p>
               </div>
             </div>
             

@@ -156,13 +156,13 @@ export default function NewExchange() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Afectado / Persona que recibe</label>
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Nombre del Asesor</label>
             <input 
               type="text" 
               required
               value={affectedPerson}
               onChange={e => setAffectedPerson(e.target.value)}
-              placeholder="Nombre del rutero o responsable..."
+              placeholder="Nombre del Asesor..."
               className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm font-medium text-slate-900 hover:border-slate-200 focus:border-primary-500 focus:bg-white focus:ring-0 transition-all outline-none"
             />
           </div>
