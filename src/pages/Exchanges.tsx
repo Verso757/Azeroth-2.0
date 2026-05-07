@@ -8,7 +8,6 @@ import { Search, ChevronRight, Download, PlusSquare, ArrowLeftRight } from 'luci
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, formatDate, exportToCSV } from '../lib/utils';
 import { Link } from 'react-router-dom';
-import jsPDF from 'jspdf';
 
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
@@ -97,26 +96,94 @@ export default function Exchanges() {
   };
 
   const handlePrintPDF = (ex: EquipmentExchange) => {
-    const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text('Hoja de Responsiva de Equipo', 14, 20);
-    doc.setFontSize(12);
-    
-    doc.text(`Fecha: ${formatDate(ex.createdAt)}`, 14, 30);
-    doc.text(`Afectado / Rutero: ${ex.affectedPerson}`, 14, 40);
-    doc.text(`Sucursal/Ruta: ${ex.cityName} - ${ex.routeName}`, 14, 50);
-    
-    const textLines = doc.splitTextToSize(`Yo ${ex.affectedPerson} me hago responsable del equipo ${ex.equipmentType} marca ${ex.brandName} que se cambió por motivo de: ${ex.motifName}. ${ex.price ? `El cual tiene un valor declarado de $${ex.price}.` : ''}\n\nMe comprometo a cuidar y mantener en buen estado este equipo y devolverlo en las mismas condiciones al ser requerido.`, 180);
-    
-    doc.text(textLines, 14, 65);
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
 
-    doc.text('_____________________________', 30, 150);
-    doc.text(`Recibe: ${ex.affectedPerson}`, 35, 160);
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Responsiva de Equipo - ${ex.affectedPerson}</title>
+          <script src="https://cdn.tailwindcss.com"></script>
+          <style>
+            @media print {
+              @page { margin: 15mm; }
+              body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            }
+          </style>
+        </head>
+        <body class="p-8 text-slate-800 font-sans">
+          <div class="max-w-4xl mx-auto border border-slate-200 rounded-[2rem] p-12 relative overflow-hidden shadow-sm">
+            <!-- decorative background -->
+            <div class="absolute top-0 right-0 w-[500px] h-[500px] bg-red-50/50 rounded-full blur-3xl -z-10 -translate-y-1/2 translate-x-1/2"></div>
+            
+            <div class="flex justify-between items-start mb-12 border-b-2 border-slate-100 pb-10">
+              <div>
+                <!-- Simulated YAQUI Logo using CSS matching image design -->
+                <div class="w-40 h-32 rounded-[2rem] bg-[#E3182D] flex items-center justify-center relative overflow-hidden shadow-md">
+                    <div class="absolute inset-0 top-[35%] bottom-[35%] bg-white transform rotate-[-8deg] scale-110"></div>
+                    <span class="relative z-10 text-[2.5rem] font-black text-[#004B87] tracking-tighter" style="font-family: Arial, Helvetica, sans-serif;">YAQUi</span>
+                </div>
+              </div>
+              <div class="text-right mt-2">
+                <h1 class="text-3xl font-black text-slate-900 uppercase tracking-tighter">Responsiva de Equipo</h1>
+                <p class="text-slate-500 font-bold mt-3 text-lg">Folio: <span class="text-slate-800">${ex.id.slice(0, 8).toUpperCase()}</span></p>
+                <p class="text-slate-500 font-medium mt-1">Fecha: <span class="text-slate-800">${formatDate(ex.createdAt)}</span></p>
+              </div>
+            </div>
 
-    doc.text('_____________________________', 110, 150);
-    doc.text(`Entrega: ${ex.userName}`, 115, 160);
+            <div class="grid grid-cols-2 gap-8 mb-12">
+              <div class="bg-slate-50 p-8 rounded-3xl border border-slate-200">
+                <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Datos del Destinatario</h3>
+                <p class="text-xl font-bold text-slate-900 mb-2">${ex.affectedPerson}</p>
+                <p class="text-sm font-medium text-slate-500 mt-3">Sucursal / Ciudad: <span class="text-slate-800 font-bold ml-1">${ex.cityName}</span></p>
+                <p class="text-sm font-medium text-slate-500 mt-1">Ruta: <span class="text-slate-800 font-bold ml-1">${ex.routeName}</span></p>
+              </div>
+              <div class="bg-blue-50/50 p-8 rounded-3xl border border-blue-100">
+                <h3 class="text-xs font-black text-blue-400 uppercase tracking-widest mb-4">Detalles del Equipo</h3>
+                <p class="text-xl font-bold text-[#004B87] mb-2">${ex.equipmentType}</p>
+                <p class="text-sm font-medium text-slate-500 mt-3">Marca / Modelo: <span class="text-slate-800 font-bold ml-1">${ex.brandName}</span></p>
+                <p class="text-sm font-medium text-slate-500 mt-1">Motivo de Cambio: <span class="text-slate-800 font-bold ml-1">${ex.motifName}</span></p>
+                ${ex.price ? `<div class="mt-4 inline-flex items-center gap-2 bg-[#E3182D]/10 text-[#E3182D] px-3 py-1.5 rounded-xl border border-[#E3182D]/20"><span class="text-xs font-black uppercase tracking-wider">Valor Declarado:</span><span class="text-sm font-black">$${ex.price.toFixed(2)} MXN</span></div>` : ''}
+              </div>
+            </div>
 
-    doc.save(`Responsiva_${ex.affectedPerson}_${formatDate(ex.createdAt)}.pdf`);
+            <div class="bg-white border-2 border-slate-100 rounded-3xl p-8 italic text-slate-600 leading-relaxed mb-24 shadow-sm text-lg font-medium text-justify">
+              "Yo <span class="font-bold text-slate-900 not-italic border-b-2 border-slate-200">${ex.affectedPerson}</span> me hago responsable del equipo descrito anteriormente, el cual se me ha sido asignado por motivo de <span class="font-bold text-slate-900 not-italic">${ex.motifName}</span>. 
+              <br/><br/>
+              Me comprometo a cuidar y mantener en buen estado este equipo, utilizándolo exclusivamente para las actividades correspondientes a mis funciones operativas, y devolverlo en las mismas condiciones al ser requerido. En caso de daño por negligencia, mal uso o extravío, asumo la responsabilidad administrativa y económica correspondiente según las políticas establecidas por la empresa."
+            </div>
+
+            <div class="grid grid-cols-2 gap-16 px-12">
+              <div class="text-center">
+                <div class="h-0.5 bg-slate-300 w-full mb-4"></div>
+                <p class="font-black text-slate-900 text-lg">${ex.affectedPerson}</p>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Recibe (Nombre y Firma)</p>
+              </div>
+              <div class="text-center">
+                <div class="h-0.5 bg-slate-300 w-full mb-4"></div>
+                <p class="font-black text-slate-900 text-lg">${ex.userName}</p>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Entrega (Nombre y Firma)</p>
+              </div>
+            </div>
+            
+            <div class="mt-20 pt-8 border-t border-slate-100 text-center text-[10px] font-black text-slate-300 uppercase tracking-widest flex items-center justify-center gap-4">
+              <span>Documento generado por el Sistema de Control Operativo</span>
+              <span>•</span>
+              <span>Propiedad de la Empresa</span>
+            </div>
+          </div>
+          <script>
+            setTimeout(() => {
+              window.print();
+              setTimeout(() => { window.close(); }, 500);
+            }, 750);
+          </script>
+        </body>
+      </html>
+    `;
+    printWindow.document.write(html);
+    printWindow.document.close();
   };
 
   if (loading) return (

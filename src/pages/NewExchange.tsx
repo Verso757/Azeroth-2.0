@@ -60,7 +60,8 @@ export default function NewExchange() {
       }
       try {
         const routeSnap = await getDocs(query(collection(db, 'routes'), where('cityId', '==', cityId)));
-        setRoutes(routeSnap.docs.map(d => ({ id: d.id, ...d.data() } as Route)));
+        const sortedRoutes = routeSnap.docs.map(d => ({ id: d.id, ...d.data() } as Route)).sort((a,b) => (a.name || '').localeCompare(b.name || ''));
+        setRoutes(sortedRoutes);
       } catch (e) {
         console.error(e);
       }
