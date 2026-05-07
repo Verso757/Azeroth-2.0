@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, addDoc, deleteDoc, doc, where, serverTimestamp } from 'firebase/firestore';
+import React, { useState, useEffect, useMemo } from 'react';
+import { collection, onSnapshot, query, addDoc, deleteDoc, updateDoc, doc, where, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../AuthContext';
 import { OperationType } from '../types';
 import { handleFirestoreError } from '../constants';
-import { Plus, Trash2, Loader2, Database, MapPin, Route, Tags, Tag, MonitorSmartphone } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { Plus, Trash2, Loader2, Database, MapPin, Route, Tags, Tag, MonitorSmartphone, Edit2, Check, X } from 'lucide-react';
 
 interface DataConfigProps {
   collectionName: string;
@@ -17,12 +16,12 @@ interface DataConfigProps {
 
 const getIconForCollection = (name: string) => {
   switch (name) {
-    case 'cities': return <MapPin className="w-5 h-5" />;
-    case 'routes': return <Route className="w-5 h-5" />;
-    case 'categories': return <Tags className="w-5 h-5" />;
-    case 'motifs': return <Tag className="w-5 h-5" />;
-    case 'brands': return <MonitorSmartphone className="w-5 h-5" />;
-    default: return <Database className="w-5 h-5" />;
+    case 'cities': return <MapPin className="w-5 h-5 text-slate-400" />;
+    case 'routes': return <Route className="w-5 h-5 text-slate-400" />;
+    case 'categories': return <Tags className="w-5 h-5 text-slate-400" />;
+    case 'motifs': return <Tag className="w-5 h-5 text-slate-400" />;
+    case 'brands': return <MonitorSmartphone className="w-5 h-5 text-slate-400" />;
+    default: return <Database className="w-5 h-5 text-slate-400" />;
   }
 };
 
@@ -31,8 +30,18 @@ export default function DataConfig({ collectionName, title, fields = [], parentC
   const [data, setData] = useState<any[]>([]);
   const [parentData, setParentData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Adding new records
   const [submitting, setSubmitting] = useState(false);
   const [newItem, setNewItem] = useState<Record<string, string>>({});
+  
+  // Filtering
+  const [filterParentId, setFilterParentId] = useState<string>('');
+
+  // Editing logic
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editItem, setEditItem] = useState<Record<string, string>>({});
+  const [savingEdit, setSavingEdit] = useState(false);
 
   useEffect(() => {
     if (!profile) return;
@@ -42,7 +51,9 @@ export default function DataConfig({ collectionName, title, fields = [], parentC
     if (parentCollection) {
       const qParent = query(collection(db, parentCollection.name), where('guildId', '==', currentGuild));
       const unSubParent = onSnapshot(qParent, (snap) => {
-        setParentData(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        const pData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        pData.sort((a, b) => (a[parentCollection.parentField] || '').localeCompare(b[parentCollection.parentField] || ''));
+        setParentData(pData);
       });
       return () => unSubParent();
     }
@@ -64,6 +75,14 @@ export default function DataConfig({ collectionName, title, fields = [], parentC
     return () => unsubscribe();
   }, [profile, collectionName, selectedGuild]);
 
+  const displayData = useMemo(() => {
+    let filtered = data;
+    if (parentCollection && filterParentId) {
+      filtered = data.filter(item => item[parentCollection.localField] === filterParentId);
+    }
+    return [...filtered].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }, [data, parentCollection, filterParentId]);
+
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
@@ -73,6 +92,7 @@ export default function DataConfig({ collectionName, title, fields = [], parentC
     try {
       await addDoc(collection(db, collectionName), {
         ...newItem,
+        ...(parentCollection && filterParentId ? { [parentCollection.localField]: filterParentId } : {}),
         guildId: currentGuild,
         createdAt: serverTimestamp()
       });
@@ -93,45 +113,63 @@ export default function DataConfig({ collectionName, title, fields = [], parentC
     }
   };
 
-  return (
-    <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-6 md:p-8 flex flex-col h-full relative overflow-hidden">
-      {/* Decorative gradient corner */}
-      <div className="absolute -top-12 -right-12 w-40 h-40 bg-indigo-50/50 rounded-full blur-3xl pointer-events-none" />
+  const startEdit = (item: any) => {
+    setEditingId(item.id);
+    setEditItem({ ...item });
+  };
 
-      <div className="flex items-center gap-4 mb-6 relative z-10">
-        <div className="w-14 h-14 rounded-[1.25rem] bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-100 shadow-inner shrink-0">
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditItem({});
+  };
+
+  const saveEdit = async () => {
+    if (!editingId) return;
+    setSavingEdit(true);
+    try {
+      await updateDoc(doc(db, collectionName, editingId), {
+        ...editItem,
+        updatedAt: serverTimestamp()
+      });
+      setEditingId(null);
+      setEditItem({});
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, collectionName);
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[500px] overflow-hidden">
+      <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col gap-3">
+        <div className="flex items-center gap-3">
           {getIconForCollection(collectionName)}
+          <h3 className="text-base font-bold text-slate-800 tracking-tight leading-none">{title}</h3>
         </div>
-        <div>
-          <h3 className="text-lg font-black uppercase text-slate-900 tracking-tight">{title}</h3>
-          <p className="text-xs text-slate-500 font-medium">Gestión de registros</p>
-        </div>
+        
+        {parentCollection && (
+          <select
+            value={filterParentId}
+            onChange={e => setFilterParentId(e.target.value)}
+            className="w-full bg-white border text-sm font-medium border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-indigo-500 transition-colors shadow-sm"
+          >
+            <option value="">{`Todas las ${parentCollection.docNameField}s`}</option>
+            {parentData.map(p => <option key={p.id} value={p.id}>{p[parentCollection.parentField]}</option>)}
+          </select>
+        )}
       </div>
       
-      <form onSubmit={handleAdd} className="flex flex-col gap-3 mb-8 relative z-10">
-        <div className="grid grid-cols-1 gap-3">
-            {parentCollection && (
-                <div className="flex-1 min-w-0">
-                    <select
-                    required
-                    value={newItem[parentCollection.localField] || ''}
-                    onChange={e => setNewItem(prev => ({...prev, [parentCollection.localField]: e.target.value}))}
-                    className="w-full bg-slate-50 hover:bg-slate-100 focus:bg-white border text-sm font-bold border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:border-indigo-500 transition-colors shadow-sm"
-                    >
-                    <option value="">{parentCollection.docNameField}</option>
-                    {parentData.map(p => <option key={p.id} value={p.id}>{p[parentCollection.parentField]}</option>)}
-                    </select>
-                </div>
-            )}
-            
-            {fields.map(f => (
+      <div className="p-4 border-b border-slate-100 bg-white">
+        <form onSubmit={handleAdd} className="flex gap-2">
+          {(!parentCollection || filterParentId) && fields.map(f => (
             <div key={f.name} className="flex-1 min-w-0">
                 {f.type === 'select' ? (
                 <select
                     required
                     value={newItem[f.name] || ''}
                     onChange={e => setNewItem(prev => ({...prev, [f.name]: e.target.value}))}
-                    className="w-full bg-slate-50 hover:bg-slate-100 focus:bg-white border text-sm font-bold border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:border-indigo-500 transition-colors shadow-sm"
+                    className="w-full bg-slate-50 border text-sm font-medium border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-indigo-500 transition-colors"
                 >
                     <option value="">{f.label}</option>
                     {f.options?.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -143,56 +181,112 @@ export default function DataConfig({ collectionName, title, fields = [], parentC
                     placeholder={f.label}
                     value={newItem[f.name] || ''}
                     onChange={e => setNewItem(prev => ({...prev, [f.name]: e.target.value}))}
-                    className="w-full bg-slate-50 hover:bg-slate-100 focus:bg-white border text-sm font-bold border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:border-indigo-500 transition-colors shadow-sm placeholder:text-slate-400"
+                    className="w-full bg-slate-50 border text-sm font-medium border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-indigo-500 transition-colors placeholder:text-slate-400"
                 />
                 )}
             </div>
-            ))}
-        </div>
-        
-        <button
-          type="submit"
-          disabled={submitting}
-          className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-2xl px-4 py-3.5 mt-2 font-black text-[11px] uppercase tracking-[0.2em] transition-all flex items-center justify-center shrink-0 shadow-md shadow-indigo-600/20 disabled:opacity-70 disabled:pointer-events-none"
-        >
-          {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4 mr-2 stroke-[3]" /> Agregar Registro</>}
-        </button>
-      </form>
+          ))}
+          {parentCollection && !filterParentId ? (
+             <div className="text-xs text-slate-500 flex-1 flex items-center">{`Selecciona un/a ${parentCollection.docNameField} para agregar.`}</div>
+          ) : (
+            <button
+              type="submit"
+              disabled={submitting}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-3 flex items-center justify-center shrink-0 shadow-sm disabled:opacity-70 disabled:pointer-events-none transition-colors"
+              title="Agregar"
+            >
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            </button>
+          )}
+        </form>
+      </div>
 
       {loading ? (
-        <div className="flex justify-center p-8 mt-auto"><Loader2 className="w-8 h-8 animate-spin text-indigo-300" /></div>
+        <div className="flex justify-center p-8 mt-auto"><Loader2 className="w-6 h-6 animate-spin text-slate-300" /></div>
       ) : (
-        <div className="flex-1 flex flex-col space-y-2.5 overflow-y-auto pr-2 custom-scrollbar min-h-[250px] relative z-10">
-          {data.map(item => (
-             <div key={item.id} className="group flex items-center justify-between p-4 rounded-[1.25rem] bg-white border border-slate-200 shadow-sm hover:border-indigo-200 hover:shadow-md transition-all text-left">
-                <div className="flex flex-col min-w-0 pr-4">
-                  <span className="font-bold tracking-tight text-slate-800 text-sm truncate">{item.name}</span>
-                  {parentCollection && item[parentCollection.localField] && (
-                    <span className="text-[10px] uppercase font-black text-indigo-500 tracking-widest truncate mt-1">
-                      {parentData.find(p => p.id === item[parentCollection.localField])?.[parentCollection.parentField] || 'Desconocido'}
-                    </span>
-                  )}
-                  {fields.filter(f => f.name !== 'name' && f.type !== 'select').map(f => (
-                     <span key={f.name} className="text-xs font-semibold text-slate-500 truncate mt-1">{f.label}: {item[f.name]}</span>
-                  ))}
-                  {fields.filter(f => f.name !== 'name' && f.type === 'select').map(f => (
-                     <span key={f.name} className="text-xs font-bold text-slate-500 truncate mt-1 bg-slate-100 self-start px-2 py-0.5 rounded-lg border border-slate-200">{f.options?.find(o => o.value === item[f.name])?.label || item[f.name]}</span>
-                  ))}
-                </div>
-                <button
-                  onClick={() => handleDelete(item.id)}
-                  className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors shrink-0 md:opacity-0 md:-translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0"
-                  title="Eliminar registro"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+        <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar bg-slate-50/30">
+          {displayData.map(item => (
+             <div key={item.id} className="group flex items-center justify-between p-3 rounded-xl bg-white border border-slate-200 shadow-sm text-left hover:border-slate-300 transition-colors">
+                {editingId === item.id ? (
+                  <div className="flex-1 flex items-center gap-2 pr-2">
+                    {fields.map(f => (
+                      <div key={f.name} className="flex-1 min-w-0">
+                          {f.type === 'select' ? (
+                          <select
+                              value={editItem[f.name] || ''}
+                              onChange={e => setEditItem(prev => ({...prev, [f.name]: e.target.value}))}
+                              className="w-full bg-slate-50 border text-sm font-medium border-slate-300 rounded p-1 outline-none focus:border-indigo-500"
+                          >
+                              <option value="">{f.label}</option>
+                              {f.options?.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                          </select>
+                          ) : (
+                          <input
+                              type="text"
+                              value={editItem[f.name] || ''}
+                              onChange={e => setEditItem(prev => ({...prev, [f.name]: e.target.value}))}
+                              className="w-full bg-slate-50 border text-sm font-medium border-slate-300 rounded p-1 outline-none focus:border-indigo-500"
+                          />
+                          )}
+                      </div>
+                    ))}
+                    <button
+                      onClick={saveEdit}
+                      disabled={savingEdit}
+                      className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded transition-colors shrink-0 disabled:opacity-50"
+                    >
+                      {savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    </button>
+                    <button
+                      onClick={cancelEdit}
+                      disabled={savingEdit}
+                      className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded transition-colors shrink-0 disabled:opacity-50"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex flex-col min-w-0 pr-4">
+                      <span className="font-bold text-slate-800 text-sm truncate">{item.name}</span>
+                      {parentCollection && !filterParentId && item[parentCollection.localField] && (
+                        <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider truncate mt-0.5">
+                          {parentData.find(p => p.id === item[parentCollection.localField])?.[parentCollection.parentField] || 'Desconocido'}
+                        </span>
+                      )}
+                      <div className="flex gap-2 mt-0.5">
+                          {fields.filter(f => f.name !== 'name' && f.type !== 'select').map(f => (
+                            <span key={f.name} className="text-[11px] text-slate-500 truncate">{f.label}: {item[f.name]}</span>
+                          ))}
+                          {fields.filter(f => f.name !== 'name' && f.type === 'select').map(f => (
+                            <span key={f.name} className="text-[10px] font-medium text-slate-600 truncate bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">{f.options?.find(o => o.value === item[f.name])?.label || item[f.name]}</span>
+                          ))}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => startEdit(item)}
+                        className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors shrink-0"
+                        title="Editar"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+                        title="Eliminar"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </>
+                )}
              </div>
           ))}
-          {data.length === 0 && (
-             <div className="flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200 h-full my-auto">
-                <Database className="w-10 h-10 text-slate-300 mb-4" />
-                <p className="text-sm font-black text-slate-800 uppercase tracking-tight">Sin registros</p>
-                <p className="text-xs font-medium text-slate-500 mt-2 max-w-[200px]">Usa el formulario para agregar el primer elemento a esta lista.</p>
+          {displayData.length === 0 && (
+             <div className="flex flex-col items-center justify-center p-6 text-center h-full">
+                <Database className="w-8 h-8 text-slate-200 mb-2" />
+                <p className="text-sm font-medium text-slate-500">No hay registros{(parentCollection && filterParentId) ? ' para esta selección' : ''}</p>
              </div>
           )}
         </div>
