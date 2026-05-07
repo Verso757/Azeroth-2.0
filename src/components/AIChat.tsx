@@ -75,7 +75,7 @@ export default function AIChat() {
     if (!input.trim()) return;
 
     // @ts-ignore
-    const currentKey = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyBSJ7Un1ibEqzz-onaeLcGsUhhKGyDXswI";
+    const currentKey = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyDn3gyU0nyrDezaIYpQyOxZ2KBtE2c0ams";
     if (!currentKey) {
       alert("Por favor configura la variable de entorno VITE_GEMINI_API_KEY.");
       return;

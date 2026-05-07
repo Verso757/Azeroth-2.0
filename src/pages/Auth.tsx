@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useAuth } from '../AuthContext';
 import { Navigate } from 'react-router-dom';
-import { ShieldAlert, ArrowRight } from 'lucide-react';
+import { ShieldAlert, ArrowRight, Building } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { LogoIcon } from '../components/LogoIcon';
 
 export default function AuthPage() {
   const { loginWithGoogle, profile, loading } = useAuth();
@@ -44,8 +45,8 @@ export default function AuthPage() {
         className="max-w-md w-full bg-white rounded-[2.5rem] shadow-sm p-10 border border-slate-100"
       >
         <div className="text-center mb-8">
-          <div className="inline-flex p-4 rounded-2xl bg-primary-50 text-primary-600 mb-6 border border-primary-100">
-            <ShieldAlert className="w-10 h-10" />
+          <div className="inline-flex w-24 h-24 rounded-[2rem] bg-white text-primary-600 mb-6 border border-slate-100 shadow-xl overflow-hidden relative items-center justify-center">
+            <LogoIcon className="w-[125%] h-[125%]" />
           </div>
           <h1 className="text-3xl font-black text-slate-900 tracking-tight">Azeroth</h1>
           <p className="text-slate-500 mt-2 font-medium text-sm">Gestión Operativa e Incidencias</p>
@@ -79,7 +80,7 @@ export default function AuthPage() {
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Código de Franquicia / Grupo</label>
                   <div className="relative">
-                    <ShieldAlert className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <Building className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input
                       required={!isLogin}
                       type="text"

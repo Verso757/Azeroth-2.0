@@ -5,6 +5,7 @@ import { LayoutDashboard, ListTodo, LogOut, PlusCircle, ShieldAlert, Menu, X, Us
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import AIChat from './AIChat';
+import { LogoIcon } from './LogoIcon';
 
 export default function Layout() {
   const { profile, logout, isAdmin } = useAuth();
@@ -35,9 +36,8 @@ export default function Layout() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3 group">
             {/* LOGO: The image will load from /public/logo.png. By default it shows an icon if not found. */}
-            <div className="w-10 h-10 rounded-2xl bg-primary-600 flex items-center justify-center text-white shadow-lg shadow-primary-200 group-hover:scale-105 transition-transform overflow-hidden">
-              <img src="/logo.png" alt="Logo" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />
-              <ShieldAlert className="w-6 h-6 hidden" />
+            <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center text-white shadow-lg shadow-primary-200 group-hover:scale-105 transition-transform overflow-hidden border border-slate-100">
+              <LogoIcon className="w-12 h-12" />
             </div>
             <span className="text-xl font-black text-slate-900 tracking-tight">Azeroth</span>
           </Link>
@@ -114,7 +114,12 @@ export default function Layout() {
               className="fixed right-0 top-0 bottom-0 w-[80%] max-w-sm bg-white z-50 shadow-2xl p-8 md:hidden flex flex-col"
             >
               <div className="flex items-center justify-between mb-10">
-                <span className="text-xl font-bold text-slate-900">Azeroth</span>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center text-white shadow-sm border border-slate-100 overflow-hidden">
+                    <LogoIcon className="w-12 h-12" />
+                  </div>
+                  <span className="text-xl font-bold text-slate-900 tracking-tight">Azeroth</span>
+                </div>
                 <button 
                   onClick={() => setIsMenuOpen(false)}
                   className="p-2 text-slate-400 hover:bg-slate-100 rounded-xl"
