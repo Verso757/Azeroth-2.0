@@ -135,13 +135,18 @@ export default function Issues() {
               const match = evt.content.match(/\(Afectado: (.*?)\)/);
               if (match) affectedPerson = match[1];
 
+              let detailText = `↳ Reincidencia`;
+              if (evt.note) {
+                 detailText += ` - Nota/Variante: ${evt.note}`;
+              }
+
               rows.push({
                 'ID': '',
                 'Hora': formatDate(evt.createdAt),
                 'Quien Reporto': evt.userName,
                 'Persona Afectada': affectedPerson,
                 'Area Problema': issue.areaName || issue.areaId || '',
-                'Detalle': `↳ Reincidencia`,
+                'Detalle': detailText,
                 'Tipo': 'Reincidencia',
                 'Estado': issue.status
               });
@@ -170,15 +175,24 @@ export default function Issues() {
         const isCritical = issue.priority === 'critical';
         const isHigh = issue.priority === 'high';
         
+        const affectedText = Array.isArray(issue.affectedPeople) ? issue.affectedPeople.join(', ') : (issue.reportedBy || 'N/A');
+
         rowsHTML.push(`
           <tr class="${isCritical ? 'bg-red-50/50' : isHigh ? 'bg-orange-50/30' : 'bg-white'} border-b border-slate-100">
-            <td class="px-4 py-3 text-sm font-bold text-slate-900">${originalId}</td>
-            <td class="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">${formatDate(issue.createdAt)}</td>
-            <td class="px-4 py-3 text-sm font-bold text-slate-900">${issue.userName}</td>
-            <td class="px-4 py-3 text-sm text-slate-700">${Array.isArray(issue.affectedPeople) ? issue.affectedPeople.join(', ') : (issue.reportedBy || '')}</td>
-            <td class="px-4 py-3 text-xs font-bold text-slate-600 uppercase tracking-wider">${issue.areaName || issue.areaId || ''}</td>
-            <td class="px-4 py-3 text-sm text-slate-800"><span class="font-bold">${issue.title}</span> - ${issue.description.slice(0, 80)}${issue.description.length > 80 ? '...' : ''}</td>
-            <td class="px-4 py-3 text-xs font-medium text-slate-500 capitalize">${STATUS_LABELS[issue.status as IssueStatus]?.label || issue.status}</td>
+            <td class="px-3 py-3 text-[11px] font-bold text-slate-900 align-top">${originalId}</td>
+            <td class="px-3 py-3 text-[10px] text-slate-500 align-top leading-relaxed">${formatDate(issue.createdAt).replace(', ', '<br/>')}</td>
+            <td class="px-3 py-3 text-[11px] align-top">
+               <div class="font-bold text-slate-900">${issue.userName}</div>
+               <div class="text-[9px] text-slate-500 mt-1">Afectado: ${affectedText}</div>
+            </td>
+            <td class="px-3 py-3 text-[10px] font-bold text-slate-600 uppercase tracking-wider align-top">${issue.areaName || issue.areaId || ''}</td>
+            <td class="px-3 py-3 text-[11px] text-slate-800 align-top leading-relaxed">
+               <div class="font-black mb-1 text-slate-900 uppercase tracking-tight">${issue.title}</div>
+               <div class="text-slate-600 font-medium">${issue.description}</div>
+            </td>
+            <td class="px-3 py-3 text-[10px] font-medium text-slate-500 capitalize align-top">
+              <span class="inline-flex px-1.5 py-0.5 rounded-md border border-slate-200 bg-slate-50 tracking-wide">${STATUS_LABELS[issue.status as IssueStatus]?.label || issue.status}</span>
+            </td>
           </tr>
         `);
         idCounter++;
@@ -192,15 +206,29 @@ export default function Issues() {
               const match = evt.content.match(/\(Afectado: (.*?)\)/);
               if (match) affectedPerson = match[1];
 
+              let noteHtml = '';
+              if (evt.note) {
+                 noteHtml = `<div class="mt-2 pl-3 border-l-2 border-slate-200 text-slate-600 font-medium not-italic"><span class="font-black text-slate-700 text-[9px] uppercase tracking-widest mr-1">Nota:</span> ${evt.note}</div>`;
+              }
+
               rowsHTML.push(`
-                <tr class="bg-slate-50/50 border-b border-slate-100 italic">
-                  <td class="px-4 py-3 text-sm font-bold text-slate-900"></td>
-                  <td class="px-4 py-3 text-xs text-slate-500 whitespace-nowrap pl-8">${formatDate(evt.createdAt)}</td>
-                  <td class="px-4 py-3 text-sm font-bold text-slate-900">${evt.userName}</td>
-                  <td class="px-4 py-3 text-sm text-slate-700">${affectedPerson}</td>
-                  <td class="px-4 py-3 text-xs font-bold text-slate-600 uppercase tracking-wider">${issue.areaName || issue.areaId || ''}</td>
-                  <td class="px-4 py-3 text-sm text-amber-700 font-bold">↳ Reincidencia</td>
-                  <td class="px-4 py-3 text-xs font-medium text-slate-500 capitalize">${STATUS_LABELS[issue.status as IssueStatus]?.label || issue.status}</td>
+                <tr class="bg-slate-50/40 border-b border-slate-100 italic">
+                  <td class="px-3 py-3 text-[11px] font-bold text-slate-900 align-top"></td>
+                  <td class="px-3 py-3 text-[10px] text-slate-500 align-top leading-relaxed pl-6">
+                     <span class="text-primary-400 font-black mr-1">↳</span> ${formatDate(evt.createdAt).replace(', ', '<br/>')}
+                  </td>
+                  <td class="px-3 py-3 text-[11px] align-top">
+                     <div class="font-bold text-slate-800">${evt.userName}</div>
+                     <div class="text-[9px] text-slate-500 mt-1">Afectado: ${affectedPerson || 'N/A'}</div>
+                  </td>
+                  <td class="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider align-top">${issue.areaName || issue.areaId || ''}</td>
+                  <td class="px-3 py-3 text-[11px] align-top leading-relaxed">
+                     <div class="text-primary-700 font-black uppercase tracking-tight mb-1">Reincidencia</div>
+                     ${noteHtml}
+                  </td>
+                  <td class="px-3 py-3 text-[10px] font-medium text-slate-500 capitalize align-top">
+                    <span class="inline-flex px-1.5 py-0.5 rounded-md border border-slate-200 bg-slate-50 tracking-wide">${STATUS_LABELS[issue.status as IssueStatus]?.label || issue.status}</span>
+                  </td>
                 </tr>
               `);
             }
@@ -222,36 +250,36 @@ export default function Issues() {
             <script src="https://cdn.tailwindcss.com"></script>
             <style>
               @media print {
-                @page { margin: 10mm; size: landscape; }
+                @page { margin: 15mm; size: portrait; }
                 body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                table { page-break-inside: auto; }
+                table { page-break-inside: auto; width: 100%; table-layout: fixed; }
                 tr { page-break-inside: avoid; page-break-after: auto; }
+                td, th { word-wrap: break-word; overflow-wrap: break-word; }
                 thead { display: table-header-group; }
               }
             </style>
           </head>
-          <body class="p-8 text-slate-800 font-sans bg-white pb-20">
+          <body class="p-4 md:p-8 text-slate-800 font-sans bg-white pb-20">
             <div class="mb-8 border-b-2 border-slate-100 pb-6 flex justify-between items-start">
               <div class="flex items-center gap-6">
-                <img src="/Logo.png" alt="Yaqui Logo" class="h-16 w-auto object-contain" onerror="this.outerHTML='<div class=\\'h-16 flex items-center justify-center\\'><span class=\\'text-3xl font-black text-[#004B87] tracking-tighter\\'>YAQUi</span></div>'" />
+                <img src="/Logo.png" alt="Yaqui Logo" class="h-14 w-auto object-contain" onerror="this.outerHTML='<div class=\\'h-14 flex items-center justify-center\\'><span class=\\'text-3xl font-black text-[#004B87] tracking-tighter\\'>YAQUi</span></div>'" />
                 <div>
-                  <h1 class="text-2xl font-black text-[#004B87] uppercase tracking-tighter">Reporte de Incidencias Operativas</h1>
-                  <p class="text-slate-500 font-medium text-sm mt-1">Generado el: <span class="text-slate-800">${new Date().toLocaleString('es-ES')}</span></p>
+                  <h1 class="text-xl font-black text-[#004B87] uppercase tracking-tighter">Reporte de Incidencias</h1>
+                  <p class="text-slate-500 font-medium text-xs mt-1">Generado el: <span class="text-slate-800">${new Date().toLocaleString('es-ES')}</span></p>
                 </div>
               </div>
             </div>
             
             <div class="rounded-xl overflow-hidden border border-slate-200">
-              <table class="w-full text-left border-collapse">
+              <table class="w-full text-left border-collapse table-fixed">
                 <thead>
-                  <tr class="bg-[#004B87] text-white">
-                    <th class="px-4 py-3 text-[10px] font-black uppercase tracking-widest">ID</th>
-                    <th class="px-4 py-3 text-[10px] font-black uppercase tracking-widest">Hora</th>
-                    <th class="px-4 py-3 text-[10px] font-black uppercase tracking-widest">Reportó</th>
-                    <th class="px-4 py-3 text-[10px] font-black uppercase tracking-widest">Afectado(s)</th>
-                    <th class="px-4 py-3 text-[10px] font-black uppercase tracking-widest">Área</th>
-                    <th class="px-4 py-3 text-[10px] font-black uppercase tracking-widest">Detalle</th>
-                    <th class="px-4 py-3 text-[10px] font-black uppercase tracking-widest">Estado</th>
+                  <tr class="bg-slate-900 text-white">
+                    <th class="px-3 py-3 w-[6%] text-[9px] font-black uppercase tracking-widest text-slate-300">ID</th>
+                    <th class="px-3 py-3 w-[12%] text-[9px] font-black uppercase tracking-widest text-slate-300">Fecha</th>
+                    <th class="px-3 py-3 w-[18%] text-[9px] font-black uppercase tracking-widest text-slate-300">Personal</th>
+                    <th class="px-3 py-3 w-[16%] text-[9px] font-black uppercase tracking-widest text-slate-300">Área</th>
+                    <th class="px-3 py-3 w-[37%] text-[9px] font-black uppercase tracking-widest text-slate-300">Detalle</th>
+                    <th class="px-3 py-3 w-[11%] text-[9px] font-black uppercase tracking-widest text-slate-300">Estado</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 bg-white">
@@ -260,7 +288,7 @@ export default function Issues() {
               </table>
             </div>
             
-            <div class="mt-12 pt-6 border-t border-slate-100 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+            <div class="mt-8 pt-4 border-t border-slate-100 text-center text-[9px] font-bold text-slate-400 uppercase tracking-widest">
               Documento autogenerado por el Sistema de Control Operativo
             </div>
 
@@ -547,9 +575,14 @@ const IssueCard: React.FC<{ issue: Issue; onClick: () => void }> = ({ issue, onC
                     </div>
                     <span className="text-[10px] font-bold text-slate-400">{formatDate(rein.createdAt)}</span>
                   </div>
-                  <div className="mt-2 flex gap-3">
-                     <span className="text-xs text-slate-600">Por: <span className="font-bold text-slate-900">{rein.userName}</span></span>
-                     {affected && <span className="text-xs text-slate-600">Afectado: <span className="font-bold text-slate-900">{affected}</span></span>}
+                  <div className="mt-2 flex flex-col gap-1">
+                    <div className="flex gap-3">
+                       <span className="text-xs text-slate-600">Por: <span className="font-bold text-slate-900">{rein.userName}</span></span>
+                       {affected && <span className="text-xs text-slate-600">Afectado: <span className="font-bold text-slate-900">{affected}</span></span>}
+                    </div>
+                    {rein.note && (
+                       <p className="text-xs text-slate-700 italic mt-1 bg-slate-100/50 p-2 rounded max-w-fit"><span className="font-bold mr-1 not-italic">Nota:</span>{rein.note}</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -568,6 +601,7 @@ function IssueDetailModal({ issue, onClose }: { issue: Issue, onClose: () => voi
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showReincidenceInput, setShowReincidenceInput] = useState(false);
   const [newAffectedPerson, setNewAffectedPerson] = useState('');
+  const [newReincidenceNote, setNewReincidenceNote] = useState('');
 
   useEffect(() => {
     const q = query(
@@ -641,46 +675,57 @@ function IssueDetailModal({ issue, onClose }: { issue: Issue, onClose: () => voi
             </button>
             <div className="flex gap-2">
               {showReincidenceInput ? (
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={newAffectedPerson}
+                      onChange={(e) => setNewAffectedPerson(e.target.value)}
+                      placeholder="Persona afectada (Opcional)"
+                      className="px-4 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-primary-500"
+                      autoFocus
+                    />
+                    <button 
+                      onClick={async () => {
+                         if (!profile || issue.reporters?.includes(profile.uid)) return;
+                         try {
+                           const issueRef = doc(db, 'issues', issue.id);
+                           const updates: any = { 
+                             reportsCount: (issue.reportsCount || 1) + 1,
+                             reporters: arrayUnion(profile.uid),
+                             updatedAt: serverTimestamp()
+                           };
+                           if (newAffectedPerson.trim()) {
+                             updates.affectedPeople = arrayUnion(newAffectedPerson.trim());
+                           }
+                           await updateDoc(issueRef, updates);
+                           const extraOpts = newReincidenceNote.trim() ? { note: newReincidenceNote.trim() } : {};
+                           await addEvent('comment', `➕ Reincidencia reportada por ${profile.displayName}${newAffectedPerson.trim() ? ` (Afectado: ${newAffectedPerson.trim()})` : ''}`, extraOpts);
+                           setShowReincidenceInput(false);
+                           setNewAffectedPerson('');
+                           setNewReincidenceNote('');
+                         } catch(e) {
+                           console.error(e);
+                         }
+                      }}
+                      className="px-4 py-2 bg-primary-600 text-white rounded-xl text-xs font-bold hover:bg-primary-700 transition-all uppercase tracking-widest"
+                    >
+                      Confirmar
+                    </button>
+                    <button 
+                      onClick={() => setShowReincidenceInput(false)}
+                      className="px-3 py-2 bg-slate-100 text-slate-500 rounded-xl text-xs hover:bg-slate-200 transition-all"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
                   <input
                     type="text"
-                    value={newAffectedPerson}
-                    onChange={(e) => setNewAffectedPerson(e.target.value)}
-                    placeholder="Persona afectada (Opcional)"
-                    className="px-4 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-primary-500"
-                    autoFocus
+                    value={newReincidenceNote}
+                    onChange={(e) => setNewReincidenceNote(e.target.value)}
+                    placeholder="Nota o variante (Opcional)"
+                    className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-primary-500"
                   />
-                  <button 
-                    onClick={async () => {
-                       if (!profile || issue.reporters?.includes(profile.uid)) return;
-                       try {
-                         const issueRef = doc(db, 'issues', issue.id);
-                         const updates: any = { 
-                           reportsCount: (issue.reportsCount || 1) + 1,
-                           reporters: arrayUnion(profile.uid),
-                           updatedAt: serverTimestamp()
-                         };
-                         if (newAffectedPerson.trim()) {
-                           updates.affectedPeople = arrayUnion(newAffectedPerson.trim());
-                         }
-                         await updateDoc(issueRef, updates);
-                         await addEvent('comment', `➕ Reincidencia reportada por ${profile.displayName}${newAffectedPerson.trim() ? ` (Afectado: ${newAffectedPerson.trim()})` : ''}`);
-                         setShowReincidenceInput(false);
-                         setNewAffectedPerson('');
-                       } catch(e) {
-                         console.error(e);
-                       }
-                    }}
-                    className="px-4 py-2 bg-primary-600 text-white rounded-xl text-xs font-bold hover:bg-primary-700 transition-all uppercase tracking-widest"
-                  >
-                    Confirmar
-                  </button>
-                  <button 
-                    onClick={() => setShowReincidenceInput(false)}
-                    className="px-3 py-2 bg-slate-100 text-slate-500 rounded-xl text-xs hover:bg-slate-200 transition-all"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
                 </div>
               ) : (
                 <button 
@@ -783,6 +828,9 @@ function IssueDetailModal({ issue, onClose }: { issue: Issue, onClose: () => voi
                   event.type === 'comment' ? "bg-white shadow-sm text-slate-700 border border-slate-100" : "bg-primary-50 text-primary-700 italic text-xs border border-primary-100"
                 )}>
                   {event.content}
+                  {event.type === 'comment' && event.content.includes('Reincidencia reportada por') && (
+                     <ReincidenceNoteEditor issueId={issue.id} eventId={event.id} initialNote={event.note} />
+                  )}
                 </div>
               </div>
             ))}
@@ -824,6 +872,69 @@ function InfoTile({ label, value, color }: { label: string, value: string, color
       <p className={cn("px-3 py-1.5 rounded-xl font-bold text-xs inline-block capitalize", colors[color])}>
         {value}
       </p>
+    </div>
+  );
+}
+
+function ReincidenceNoteEditor({ issueId, eventId, initialNote }: { issueId: string, eventId: string, initialNote?: string }) {
+  const [editing, setEditing] = useState(false);
+  const [note, setNote] = useState(initialNote || '');
+  const [saving, setSaving] = useState(false);
+
+  const saveNote = async () => {
+    setSaving(true);
+    try {
+      await updateDoc(doc(db, 'issues', issueId, 'events', eventId), { note: note.trim() });
+      setEditing(false);
+    } catch(e) {
+      console.error(e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!editing) {
+    return (
+      <div className="mt-2">
+        {initialNote ? (
+          <p className="text-xs text-slate-600 italic">
+            <span className="font-bold mr-1">Nota:</span>
+            {initialNote}
+            <button onClick={() => setEditing(true)} className="ml-2 text-primary-500 hover:underline not-italic text-[10px] font-bold">Editar</button>
+          </p>
+        ) : (
+          <button onClick={() => setEditing(true)} className="text-[10px] font-bold text-primary-600 hover:underline uppercase tracking-wider">
+            + Añadir Nota/Variante
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-2 flex items-center gap-2">
+      <input 
+        type="text"
+        value={note}
+        onChange={e => setNote(e.target.value)}
+        placeholder="Nota o variante del problema..."
+        className="flex-1 text-xs px-3 py-1.5 border border-slate-200 rounded-lg outline-none focus:border-primary-500"
+        autoFocus
+      />
+      <button 
+        onClick={saveNote}
+        disabled={saving}
+        className="px-3 py-1.5 bg-primary-600 text-white rounded-lg text-xs font-bold disabled:opacity-50"
+      >
+        {saving ? '...' : 'Guardar'}
+      </button>
+      <button 
+        onClick={() => { setEditing(false); setNote(initialNote || ''); }}
+        disabled={saving}
+        className="px-2 py-1.5 text-slate-400 hover:text-slate-600"
+      >
+        <X className="w-4 h-4" />
+      </button>
     </div>
   );
 }

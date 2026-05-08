@@ -55,6 +55,7 @@ export interface IssueEvent {
   content: string;
   from?: string;
   to?: string;
+  note?: string;
   createdAt: string;
 }
 
