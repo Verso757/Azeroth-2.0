@@ -120,7 +120,7 @@ export default function Issues() {
           'Quien Reporto': issue.userName,
           'Persona Afectada': Array.isArray(issue.affectedPeople) ? issue.affectedPeople.join(', ') : (issue.reportedBy || ''),
           'Area Problema': issue.areaName || issue.areaId || '',
-          'Detalle': `${issue.title} - ${issue.description}`,
+          'Detalle': `${issue.title} - ${issue.description}`.replace(/\n/g, ' '),
           'Tipo': 'Original',
           'Estado': issue.status
         });
@@ -146,7 +146,7 @@ export default function Issues() {
                 'Quien Reporto': evt.userName,
                 'Persona Afectada': affectedPerson,
                 'Area Problema': issue.areaName || issue.areaId || '',
-                'Detalle': detailText,
+                'Detalle': detailText.replace(/\n/g, ' '),
                 'Tipo': 'Reincidencia',
                 'Estado': issue.status
               });
@@ -154,7 +154,7 @@ export default function Issues() {
           });
         }
       }
-      exportToCSV(rows, 'incidencias_ops');
+      exportToCSV(rows, `Incidencias_${new Date().toLocaleDateString('es-ES').replace(/\//g, '-')}`);
     } catch (e) {
       console.error(e);
       alert('Error exportando CSV');
