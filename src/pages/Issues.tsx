@@ -7,8 +7,6 @@ import { handleFirestoreError } from '../constants';
 import { Filter, Search, Clock, CheckCircle2, AlertTriangle, MoreHorizontal, XCircle, MessageSquare, UserPlus, ArrowRight, Tag, ChevronRight, X, Download, PlusSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, formatDate, exportToCSV } from '../lib/utils';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
 const STATUS_LABELS = {
   open: { label: 'Abierto', color: 'text-primary-700 bg-primary-50 border-primary-200', icon: Clock },
@@ -118,10 +116,9 @@ export default function Issues() {
         const originalId = idCounter;
         rows.push({
           'ID': originalId,
-          'Folio Origen': '',
           'Hora': formatDate(issue.createdAt),
           'Quien Reporto': issue.userName,
-          'Persona Afectada': issue.reportedBy || '',
+          'Persona Afectada': Array.isArray(issue.affectedPeople) ? issue.affectedPeople.join(', ') : (issue.reportedBy || ''),
           'Area Problema': issue.areaName || issue.areaId || '',
           'Detalle': `${issue.title} - ${issue.description}`,
           'Tipo': 'Original',
@@ -139,17 +136,15 @@ export default function Issues() {
               if (match) affectedPerson = match[1];
 
               rows.push({
-                'ID': idCounter,
-                'Folio Origen': `Ref a #${originalId}`,
+                'ID': '',
                 'Hora': formatDate(evt.createdAt),
                 'Quien Reporto': evt.userName,
                 'Persona Afectada': affectedPerson,
                 'Area Problema': issue.areaName || issue.areaId || '',
-                'Detalle': `${issue.title} - ${issue.description}`,
+                'Detalle': `↳ Reincidencia`,
                 'Tipo': 'Reincidencia',
                 'Estado': issue.status
               });
-              idCounter++;
             }
           });
         }
@@ -166,22 +161,26 @@ export default function Issues() {
   const handleExportPDF = async () => {
     setIsExporting(true);
     try {
-      const rows = [];
+      const rowsHTML: string[] = [];
       let idCounter = 1;
       
       for (const issue of filteredIssues) {
         const originalId = idCounter;
-        rows.push([
-          originalId,
-          '', // Folio Origen
-          formatDate(issue.createdAt),
-          issue.userName,
-          (Array.isArray(issue.affectedPeople) ? issue.affectedPeople.join(', ') : issue.reportedBy || ''),
-          issue.areaName || issue.areaId || '',
-          `${issue.title}\n${issue.description.slice(0, 50)}...`,
-          'Original',
-          issue.status
-        ]);
+        
+        const isCritical = issue.priority === 'critical';
+        const isHigh = issue.priority === 'high';
+        
+        rowsHTML.push(`
+          <tr class="${isCritical ? 'bg-red-50/50' : isHigh ? 'bg-orange-50/30' : 'bg-white'} border-b border-slate-100">
+            <td class="px-4 py-3 text-sm font-bold text-slate-900">${originalId}</td>
+            <td class="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">${formatDate(issue.createdAt)}</td>
+            <td class="px-4 py-3 text-sm font-bold text-slate-900">${issue.userName}</td>
+            <td class="px-4 py-3 text-sm text-slate-700">${Array.isArray(issue.affectedPeople) ? issue.affectedPeople.join(', ') : (issue.reportedBy || '')}</td>
+            <td class="px-4 py-3 text-xs font-bold text-slate-600 uppercase tracking-wider">${issue.areaName || issue.areaId || ''}</td>
+            <td class="px-4 py-3 text-sm text-slate-800"><span class="font-bold">${issue.title}</span> - ${issue.description.slice(0, 80)}${issue.description.length > 80 ? '...' : ''}</td>
+            <td class="px-4 py-3 text-xs font-medium text-slate-500 capitalize">${STATUS_LABELS[issue.status as IssueStatus]?.label || issue.status}</td>
+          </tr>
+        `);
         idCounter++;
 
         if ((issue.reportsCount || 1) > 1) {
@@ -193,44 +192,91 @@ export default function Issues() {
               const match = evt.content.match(/\(Afectado: (.*?)\)/);
               if (match) affectedPerson = match[1];
 
-              rows.push([
-                idCounter,
-                `Ref a #${originalId}`,
-                formatDate(evt.createdAt),
-                evt.userName,
-                affectedPerson,
-                issue.areaName || issue.areaId || '',
-                `${issue.title} (Reincidencia)`,
-                'Reincidencia',
-                issue.status
-              ]);
-              idCounter++;
+              rowsHTML.push(`
+                <tr class="bg-slate-50/50 border-b border-slate-100 italic">
+                  <td class="px-4 py-3 text-sm font-bold text-slate-900"></td>
+                  <td class="px-4 py-3 text-xs text-slate-500 whitespace-nowrap pl-8">${formatDate(evt.createdAt)}</td>
+                  <td class="px-4 py-3 text-sm font-bold text-slate-900">${evt.userName}</td>
+                  <td class="px-4 py-3 text-sm text-slate-700">${affectedPerson}</td>
+                  <td class="px-4 py-3 text-xs font-bold text-slate-600 uppercase tracking-wider">${issue.areaName || issue.areaId || ''}</td>
+                  <td class="px-4 py-3 text-sm text-amber-700 font-bold">↳ Reincidencia</td>
+                  <td class="px-4 py-3 text-xs font-medium text-slate-500 capitalize">${STATUS_LABELS[issue.status as IssueStatus]?.label || issue.status}</td>
+                </tr>
+              `);
             }
           });
         }
       }
       
-      const doc = new jsPDF('landscape');
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+         alert("Por favor habilita las ventanas emergentes (pop-ups) para generar el PDF.");
+         return;
+      }
       
-      doc.setFontSize(18);
-      doc.text('Reporte de Incidencias Operativas', 14, 22);
-      doc.setFontSize(11);
-      doc.setTextColor(100);
-      doc.text(`Generado el: ${new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`, 14, 30);
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Reporte de Incidencias Operativas</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+            <style>
+              @media print {
+                @page { margin: 10mm; size: landscape; }
+                body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                table { page-break-inside: auto; }
+                tr { page-break-inside: avoid; page-break-after: auto; }
+                thead { display: table-header-group; }
+              }
+            </style>
+          </head>
+          <body class="p-8 text-slate-800 font-sans bg-white pb-20">
+            <div class="mb-8 border-b-2 border-slate-100 pb-6 flex justify-between items-start">
+              <div class="flex items-center gap-6">
+                <img src="/Logo.png" alt="Yaqui Logo" class="h-16 w-auto object-contain" onerror="this.outerHTML='<div class=\\'h-16 flex items-center justify-center\\'><span class=\\'text-3xl font-black text-[#004B87] tracking-tighter\\'>YAQUi</span></div>'" />
+                <div>
+                  <h1 class="text-2xl font-black text-[#004B87] uppercase tracking-tighter">Reporte de Incidencias Operativas</h1>
+                  <p class="text-slate-500 font-medium text-sm mt-1">Generado el: <span class="text-slate-800">${new Date().toLocaleString('es-ES')}</span></p>
+                </div>
+              </div>
+            </div>
+            
+            <div class="rounded-xl overflow-hidden border border-slate-200">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="bg-[#004B87] text-white">
+                    <th class="px-4 py-3 text-[10px] font-black uppercase tracking-widest">ID</th>
+                    <th class="px-4 py-3 text-[10px] font-black uppercase tracking-widest">Hora</th>
+                    <th class="px-4 py-3 text-[10px] font-black uppercase tracking-widest">Reportó</th>
+                    <th class="px-4 py-3 text-[10px] font-black uppercase tracking-widest">Afectado(s)</th>
+                    <th class="px-4 py-3 text-[10px] font-black uppercase tracking-widest">Área</th>
+                    <th class="px-4 py-3 text-[10px] font-black uppercase tracking-widest">Detalle</th>
+                    <th class="px-4 py-3 text-[10px] font-black uppercase tracking-widest">Estado</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 bg-white">
+                  ${rowsHTML.join('')}
+                </tbody>
+              </table>
+            </div>
+            
+            <div class="mt-12 pt-6 border-t border-slate-100 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              Documento autogenerado por el Sistema de Control Operativo
+            </div>
+
+            <script>
+              setTimeout(() => {
+                window.print();
+                setTimeout(() => { window.close(); }, 500);
+              }, 750);
+            </script>
+          </body>
+        </html>
+      `;
+
+      printWindow.document.write(html);
+      printWindow.document.close();
       
-      autoTable(doc, {
-        startY: 36,
-        head: [['ID', 'Origen', 'Hora', 'Reportó', 'Afectado', 'Área', 'Detalle', 'Tipo', 'Estado']],
-        body: rows,
-        styles: { fontSize: 8, cellPadding: 3 },
-        headStyles: { fillColor: [59, 130, 246] },
-        alternateRowStyles: { fillColor: [248, 250, 252] },
-        columnStyles: {
-          6: { cellWidth: 50 }
-        }
-      });
-      
-      doc.save('incidencias_ops.pdf');
     } catch (e) {
       console.error(e);
       alert('Error exportando PDF');
@@ -378,74 +424,140 @@ export default function Issues() {
 const IssueCard: React.FC<{ issue: Issue; onClick: () => void }> = ({ issue, onClick }) => {
   const status = STATUS_LABELS[issue.status] || STATUS_LABELS.open;
   const StatusIcon = status.icon;
+  const [expanded, setExpanded] = useState(false);
+  const [reincidencias, setReincidencias] = useState<any[]>([]);
+  const [loadingRein, setLoadingRein] = useState(false);
+
+  const fetchReincidencias = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (expanded) {
+      setExpanded(false);
+      return;
+    }
+    setLoadingRein(true);
+    try {
+      const snap = await getDocs(query(collection(db, 'issues', issue.id, 'events'), orderBy('createdAt', 'asc')));
+      const evts = snap.docs.map(d => d.data());
+      const filtered = evts.filter(evt => evt.type === 'comment' && evt.content.includes('Reincidencia reportada por'));
+      setReincidencias(filtered);
+    } catch(err) {
+      console.error(err);
+    } finally {
+      setLoadingRein(false);
+    }
+    setExpanded(true);
+  };
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -2 }}
-      onClick={onClick}
-      className="group bg-white rounded-2xl border border-slate-100 p-4 flex flex-col md:flex-row gap-4 hover:border-primary-200 hover:shadow-lg hover:shadow-primary-900/5 transition-all cursor-pointer relative overflow-hidden"
-    >
-      <div className={cn("absolute left-0 top-0 bottom-0 w-1.5", 
-        issue.priority === 'critical' ? 'bg-red-500' :
-        issue.priority === 'high' ? 'bg-orange-500' :
-        issue.priority === 'medium' ? 'bg-amber-400' : 'bg-slate-300'
-      )} />
+    <div className="space-y-2">
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        whileHover={{ y: -2 }}
+        onClick={onClick}
+        className="group bg-white rounded-2xl border border-slate-100 p-4 flex flex-col md:flex-row gap-4 hover:border-primary-200 hover:shadow-lg hover:shadow-primary-900/5 transition-all cursor-pointer relative overflow-hidden z-10"
+      >
+        <div className={cn("absolute left-0 top-0 bottom-0 w-1.5", 
+          issue.priority === 'critical' ? 'bg-red-500' :
+          issue.priority === 'high' ? 'bg-orange-500' :
+          issue.priority === 'medium' ? 'bg-amber-400' : 'bg-slate-300'
+        )} />
 
-      <div className="flex-1 space-y-2">
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{issue.areaName}</span>
-              <div className={cn(
-                "flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border",
-                status.color
-              )}>
-                <StatusIcon className="w-3 h-3" />
-                {status.label}
+        <div className="flex-1 space-y-2">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{issue.areaName}</span>
+                <div className={cn(
+                  "flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border",
+                  status.color
+                )}>
+                  <StatusIcon className="w-3 h-3" />
+                  {status.label}
+                </div>
               </div>
+              <h3 className="text-base font-black text-slate-900 group-hover:text-primary-600 transition-colors uppercase leading-tight">{issue.title}</h3>
             </div>
-            <h3 className="text-base font-black text-slate-900 group-hover:text-primary-600 transition-colors uppercase leading-tight">{issue.title}</h3>
+            <div className="text-right">
+               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter block">{formatDate(issue.createdAt)}</span>
+            </div>
           </div>
-          <div className="text-right">
-             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter block">{formatDate(issue.createdAt)}</span>
+
+          <p className="text-slate-500 text-sm font-medium line-clamp-1 italic">
+            "{issue.description}"
+          </p>
+
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            <div className="flex items-center gap-2 px-2.5 py-1 bg-slate-50 rounded-lg border border-slate-100">
+               <div className="w-5 h-5 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center text-[10px] font-black">{issue.userName?.charAt(0) || 'U'}</div>
+               <span className="text-xs font-bold text-slate-600 truncate max-w-[120px]">{issue.userName}</span>
+            </div>
+            {Array.isArray(issue.affectedPeople) && issue.affectedPeople.length > 0 && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-xl border border-blue-100">
+                 <span className="text-xs font-bold text-blue-700 truncate max-w-[120px]">Afectados: {issue.affectedPeople.join(', ')}</span>
+              </div>
+            )}
+            {issue.assignedToName && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 rounded-xl border border-emerald-100">
+                 <UserPlus className="w-3.5 h-3.5 text-emerald-600" />
+                 <span className="text-xs font-bold text-emerald-700 truncate max-w-[120px]">Asignado: {issue.assignedToName}</span>
+              </div>
+            )}
+            {(issue.reportsCount && issue.reportsCount > 1) ? (
+              <button 
+                onClick={fetchReincidencias}
+                className={cn("flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-colors", expanded ? "bg-red-600 text-white border-red-600 hover:bg-red-700" : "bg-red-50 text-red-600 border-red-100 hover:bg-red-100")}
+              >
+                 <AlertTriangle className="w-3.5 h-3.5" />
+                 <span className="text-xs font-bold">{issue.reportsCount} Reportes {loadingRein ? '...' : expanded ? '(Ocultar)' : '(Ver)'}</span>
+              </button>
+            ) : null}
           </div>
         </div>
-
-        <p className="text-slate-500 text-sm font-medium line-clamp-1 italic">
-          "{issue.description}"
-        </p>
-
-        <div className="flex flex-wrap items-center gap-3 pt-1">
-          <div className="flex items-center gap-2 px-2.5 py-1 bg-slate-50 rounded-lg border border-slate-100">
-             <div className="w-5 h-5 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center text-[10px] font-black">{issue.userName?.charAt(0) || 'U'}</div>
-             <span className="text-xs font-bold text-slate-600 truncate max-w-[120px]">{issue.userName}</span>
-          </div>
-          {Array.isArray(issue.affectedPeople) && issue.affectedPeople.length > 0 && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-xl border border-blue-100">
-               <span className="text-xs font-bold text-blue-700 truncate max-w-[120px]">Afectados: {issue.affectedPeople.join(', ')}</span>
-            </div>
-          )}
-          {issue.assignedToName && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 rounded-xl border border-emerald-100">
-               <UserPlus className="w-3.5 h-3.5 text-emerald-600" />
-               <span className="text-xs font-bold text-emerald-700 truncate max-w-[120px]">Asignado: {issue.assignedToName}</span>
-            </div>
-          )}
-          {(issue.reportsCount && issue.reportsCount > 1) ? (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 rounded-xl border border-red-100">
-               <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
-               <span className="text-xs font-bold text-red-700">{issue.reportsCount} Reportes</span>
-            </div>
-          ) : null}
+        
+        <div className="flex items-center justify-center p-4">
+          <ChevronRight className="w-6 h-6 text-slate-300 group-hover:text-primary-500 transition-colors" />
         </div>
-      </div>
-      
-      <div className="flex items-center justify-center p-4">
-        <ChevronRight className="w-6 h-6 text-slate-300 group-hover:text-primary-500 transition-colors" />
-      </div>
-    </motion.div>
+      </motion.div>
+
+      {expanded && reincidencias.length > 0 && (
+        <motion.div 
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          className="pl-8 md:pl-12 space-y-2 relative"
+        >
+          {/* Timeline connecting line */}
+          <div className="absolute left-4 top-0 bottom-6 w-px bg-slate-200" />
+          
+          {reincidencias.map((rein, idx) => {
+            let affected = '';
+            const match = rein.content.match(/\(Afectado: (.*?)\)/);
+            if (match) affected = match[1];
+
+            return (
+              <div key={idx} className="relative bg-slate-50 border border-slate-200 rounded-2xl p-4 flex gap-4 ml-2">
+                <div className="absolute -left-[35px] top-6 w-8 h-px bg-slate-200" />
+                <div className="absolute -left-[38px] top-[21px] w-2 h-2 rounded-full border-2 border-slate-300 bg-white" />
+                
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-500" />
+                      <span className="text-xs font-bold text-slate-900">Reincidencia Reportada</span>
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-400">{formatDate(rein.createdAt)}</span>
+                  </div>
+                  <div className="mt-2 flex gap-3">
+                     <span className="text-xs text-slate-600">Por: <span className="font-bold text-slate-900">{rein.userName}</span></span>
+                     {affected && <span className="text-xs text-slate-600">Afectado: <span className="font-bold text-slate-900">{affected}</span></span>}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </motion.div>
+      )}
+    </div>
   );
 }
 
