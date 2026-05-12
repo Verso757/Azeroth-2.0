@@ -27,8 +27,10 @@ export default function Dashboard() {
     
     let q = query(collection(db, 'issues'));
     if (profile.role !== 'superadmin') {
-      const allGuilds = [profile.guildId, ...(profile.allowedGuilds || [])].slice(0, 30);
-      q = query(collection(db, 'issues'), where('guildId', 'in', allGuilds));
+      const allGuilds = Array.from(new Set([profile.guildId, ...(profile.allowedGuilds || [])])).filter(Boolean).slice(0, 30);
+      if (allGuilds.length > 0) {
+        q = query(collection(db, 'issues'), where('guildId', 'in', allGuilds));
+      }
     }
     
     const unsubscribe = onSnapshot(q, (snapshot) => {

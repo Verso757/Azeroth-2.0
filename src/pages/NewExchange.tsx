@@ -32,7 +32,7 @@ export default function NewExchange() {
     // Fetch options
     const fetchOptions = async () => {
       try {
-        const adminGuilds = profile.allowedGuilds ? [profile.guildId, ...profile.allowedGuilds] : [profile.guildId];
+        const adminGuilds = Array.from(new Set([profile.guildId, ...(profile.allowedGuilds || [])])).filter(Boolean).slice(0, 30);
         
         // Fetch cities
         const citySnap = await getDocs(query(collection(db, 'cities'), where('guildId', 'in', adminGuilds)));

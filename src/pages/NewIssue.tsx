@@ -37,7 +37,8 @@ export default function NewIssue() {
     const initGuild = async () => {
       if (profile.allowedGuilds && profile.allowedGuilds.length > 0) {
         // they have multiple, load them
-        const gSnap = await getDocs(query(collection(db, 'guilds'), where('id', 'in', [profile.guildId, ...profile.allowedGuilds])));
+        const allGuilds = Array.from(new Set([profile.guildId, ...profile.allowedGuilds])).filter(Boolean).slice(0, 30);
+        const gSnap = await getDocs(query(collection(db, 'guilds'), where('id', 'in', allGuilds)));
         setGuilds(gSnap.docs.map(d => ({id: d.id, ...d.data()})));
         if (!selectedGuild) setSelectedGuild(profile.guildId);
       } else {

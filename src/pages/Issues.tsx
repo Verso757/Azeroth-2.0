@@ -37,7 +37,8 @@ export default function Issues() {
     let q = query(collection(db, 'issues'));
     
     if (profile.role !== 'superadmin') {
-      const allGuilds = [profile.guildId, ...(profile.allowedGuilds || [])].slice(0, 30);
+      const allGuilds = Array.from(new Set([profile.guildId, ...(profile.allowedGuilds || [])])).filter(Boolean).slice(0, 30);
+      if (allGuilds.length === 0) return;
       q = query(collection(db, 'issues'), where('guildId', 'in', allGuilds));
       if (filter === 'mine') {
         q = query(collection(db, 'issues'), where('guildId', 'in', allGuilds), where('userId', '==', profile.uid));

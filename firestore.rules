@@ -59,14 +59,14 @@ service cloud.firestore {
 
     match /areas/{areaId} {
       allow read: if isSignedIn() && isSameGuild(resource.data.guildId);
-      allow create: if isAdmin() && incoming().guildId == getUserGuild();
+      allow create: if isAdmin() && isSameGuild(incoming().guildId);
       allow update: if isAdmin() && isSameGuild(existing().guildId) && incoming().guildId == existing().guildId;
       allow delete: if isAdmin() && isSameGuild(existing().guildId);
     }
 
     match /cities/{cityId} {
       allow read: if isSignedIn() && isSameGuild(resource.data.guildId);
-      allow create: if isAdmin() && incoming().guildId == getUserGuild();
+      allow create: if isAdmin() && isSameGuild(incoming().guildId);
       allow update: if isAdmin() && isSameGuild(existing().guildId) && incoming().guildId == existing().guildId;
       allow delete: if isAdmin() && isSameGuild(existing().guildId);
     }
@@ -81,21 +81,21 @@ service cloud.firestore {
 
     match /categories/{categoryId} {
       allow read: if isSignedIn() && isSameGuild(resource.data.guildId);
-      allow create: if isAdmin() && incoming().guildId == getUserGuild();
+      allow create: if isAdmin() && isSameGuild(incoming().guildId);
       allow update: if isAdmin() && isSameGuild(existing().guildId) && incoming().guildId == existing().guildId;
       allow delete: if isAdmin() && isSameGuild(existing().guildId);
     }
 
     match /brands/{brandId} {
       allow read: if isSignedIn() && isSameGuild(resource.data.guildId);
-      allow create: if isAdmin() && incoming().guildId == getUserGuild();
+      allow create: if isAdmin() && isSameGuild(incoming().guildId);
       allow update: if isAdmin() && isSameGuild(existing().guildId) && incoming().guildId == existing().guildId;
       allow delete: if isAdmin() && isSameGuild(existing().guildId);
     }
 
     match /motifs/{motifId} {
       allow read: if isSignedIn() && isSameGuild(resource.data.guildId);
-      allow create: if isAdmin() && incoming().guildId == getUserGuild();
+      allow create: if isAdmin() && isSameGuild(incoming().guildId);
       allow update: if isAdmin() && isSameGuild(existing().guildId) && incoming().guildId == existing().guildId;
       allow delete: if isAdmin() && isSameGuild(existing().guildId);
     }
@@ -103,7 +103,7 @@ service cloud.firestore {
     match /equipment_exchanges/{exchangeId} {
       allow get: if isSignedIn() && isSameGuild(existing().guildId);
       allow list: if isSignedIn() && isSameGuild(resource.data.guildId);
-      allow create: if isSignedIn() && incoming().guildId == getUserGuild() && incoming().userId == request.auth.uid;
+      allow create: if isSignedIn() && isSameGuild(incoming().guildId) && incoming().userId == request.auth.uid;
       allow update: if isAdmin() && isSameGuild(existing().guildId) && incoming().guildId == existing().guildId;
       allow delete: if isAdmin() && isSameGuild(existing().guildId);
     }
@@ -127,7 +127,7 @@ service cloud.firestore {
       allow create: if isSignedIn() && 
                       isValidIssue(incoming()) && 
                       incoming().userId == request.auth.uid &&
-                      incoming().guildId == getUserGuild() &&
+                      isSameGuild(incoming().guildId) &&
                       incoming().status == 'open' &&
                       incoming().createdAt == request.time;
       

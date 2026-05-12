@@ -28,7 +28,7 @@ export default function AIChat() {
       try {
         let q = query(collection(db, 'issues'));
         if (profile.role !== 'superadmin') {
-          const allGuilds = [profile.guildId, ...(profile.allowedGuilds || [])].filter(Boolean).slice(0, 30);
+          const allGuilds = Array.from(new Set([profile.guildId, ...(profile.allowedGuilds || [])])).filter(Boolean).slice(0, 30);
           if (allGuilds.length > 0) {
             q = query(collection(db, 'issues'), where('guildId', 'in', allGuilds));
           } else {

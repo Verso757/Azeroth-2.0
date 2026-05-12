@@ -39,9 +39,9 @@ export default function AdminPanel() {
       });
       return () => unsub();
     } else if (profile.allowedGuilds && profile.allowedGuilds.length > 0) {
-      const gSnap = [profile.guildId, ...profile.allowedGuilds];
+      const gSnap = Array.from(new Set([profile.guildId, ...profile.allowedGuilds])).filter(Boolean).slice(0, 30);
       // Ideally we'd fetch them to get names, but we can just use IDs as names for now or fetch them.
-      const unsub = onSnapshot(query(collection(db, 'guilds'), where('id', 'in', gSnap.slice(0, 30))), (snapshot) => {
+      const unsub = onSnapshot(query(collection(db, 'guilds'), where('id', 'in', gSnap)), (snapshot) => {
         const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setGuilds(list);
         if (!selectedAdminGuild && list.length > 0) {

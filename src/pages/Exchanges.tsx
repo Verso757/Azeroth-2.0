@@ -26,7 +26,7 @@ export default function Exchanges() {
     
     let q = query(collection(db, 'equipment_exchanges'));
     if (profile.role !== 'superadmin') {
-       const allowedGuilds = profile.allowedGuilds ? [profile.guildId, ...profile.allowedGuilds].slice(0, 30) : [profile.guildId];
+       const allowedGuilds = Array.from(new Set([profile.guildId, ...(profile.allowedGuilds || [])])).filter(Boolean).slice(0, 30);
        q = query(collection(db, 'equipment_exchanges'), where('guildId', 'in', allowedGuilds));
     }
 
