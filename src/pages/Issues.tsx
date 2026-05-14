@@ -30,6 +30,7 @@ export default function Issues() {
 
   const [guildFilt, setGuildFilt] = useState('all');
   const [cityFilt, setCityFilt] = useState('all');
+  const [statusFilt, setStatusFilt] = useState<'active' | 'all'>('active');
 
   useEffect(() => {
     if (!profile) return;
@@ -101,8 +102,19 @@ export default function Issues() {
       const issueWeek = Math.min(5, Math.ceil(day / 7)).toString();
       if (issueWeek !== week) return false;
     }
-    
+
+    if (statusFilt === 'active' && (issue.status === 'resolved' || issue.status === 'closed')) return false;
+
     return true;
+  }).sort((a, b) => {
+    const aReincident = (a.reportsCount || 1) > 1 ? 1 : 0;
+    const bReincident = (b.reportsCount || 1) > 1 ? 1 : 0;
+    if (aReincident !== bReincident) {
+      return bReincident - aReincident; 
+    }
+    const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+    const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+    return timeB - timeA;
   });
 
   const [isExporting, setIsExporting] = useState(false);
@@ -404,6 +416,17 @@ export default function Issues() {
               >
                 <option value="all">Ciudad: Todas</option>
                 {uniqueCities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+
+          <div className="flex bg-white rounded-2xl border border-slate-200 p-1 shadow-sm">
+            <select 
+                value={statusFilt} 
+                onChange={e => setStatusFilt(e.target.value as 'active' | 'all')}
+                className="text-xs font-bold text-slate-600 outline-none bg-transparent px-2 py-1 cursor-pointer w-auto"
+              >
+                <option value="active">Estado: Activos</option>
+                <option value="all">Estado: Todos</option>
             </select>
           </div>
           
