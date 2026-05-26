@@ -108,6 +108,30 @@ service cloud.firestore {
       allow delete: if isAdmin() && isSameGuild(existing().guildId);
     }
 
+    match /route_responsivas/{routeId} {
+      allow get: if isSignedIn() && isSameGuild(existing().guildId);
+      allow list: if isSignedIn() && isSameGuild(resource.data.guildId);
+      allow create: if isSignedIn() && isSameGuild(incoming().guildId) && incoming().userId == request.auth.uid;
+      allow update: if isSignedIn() && isSameGuild(existing().guildId) && incoming().guildId == existing().guildId;
+      allow delete: if isAdmin() && isSameGuild(existing().guildId);
+    }
+
+    match /assets/{assetId} {
+      allow get: if isSignedIn() && isSameGuild(existing().guildId);
+      allow list: if isSignedIn() && isSameGuild(resource.data.guildId);
+      allow create: if isSignedIn() && isSameGuild(incoming().guildId);
+      allow update: if isSignedIn() && isSameGuild(existing().guildId) && incoming().guildId == existing().guildId;
+      allow delete: if isAdmin() && isSameGuild(existing().guildId);
+    }
+
+    match /asset_transactions/{transactionId} {
+      allow get: if isSignedIn() && isSameGuild(existing().guildId);
+      allow list: if isSignedIn() && isSameGuild(resource.data.guildId);
+      allow create: if isSignedIn() && isSameGuild(incoming().guildId);
+      allow update: if isSignedIn() && isSameGuild(existing().guildId) && incoming().guildId == existing().guildId;
+      allow delete: if isAdmin() && isSameGuild(existing().guildId);
+    }
+
     match /settings/{guildId} {
       allow read: if isSameGuild(guildId);
       allow write: if isAdmin() && isSameGuild(guildId);

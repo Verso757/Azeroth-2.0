@@ -113,6 +113,66 @@ export interface EquipmentExchange {
   updatedAt: any;
 }
 
+export interface RouteResponsiva {
+  id: string; // which is routeId
+  guildId: string;
+  cityId: string;
+  cityName: string;
+  routeId: string;
+  routeName: string;
+  equipmentType: string;
+  brandName: string;
+  newEquipment?: string;
+  userName: string; // The person registering
+  affectedPerson: string; // The person who received the equipment
+  scannedDocument?: string; // Base64 compressed image
+  digitalSignature?: string; // Base64 of the signature
+  updatedAt: any;
+}
+
+export type AssetStatus = 'available' | 'assigned' | 'maintenance' | 'lost' | 'retired';
+export type AssetType = 'printer' | 'smartphone' | 'tablet' | 'other';
+
+export interface Asset {
+  id: string;
+  guildId: string;
+  type: string;
+  brandId?: string;
+  brandName?: string;
+  model: string;
+  uid: string; // IMEI, MAC, Serial
+  status: AssetStatus;
+  currentRouteId?: string;
+  currentRouteName?: string;
+  currentCityId?: string;
+  currentCityName?: string;
+  currentSupervisor?: string;
+  notes?: string;
+  createdAt: any;
+  updatedAt: any;
+}
+
+export type TransactionType = 'entry' | 'assignment' | 'return' | 'maintenance' | 'retirement';
+
+export interface AssetTransaction {
+  id: string;
+  guildId: string;
+  assetId: string;
+  assetUid: string;
+  assetType: string;
+  type: TransactionType;
+  fromStatus?: AssetStatus;
+  toStatus: AssetStatus;
+  routeId?: string;
+  routeName?: string;
+  supervisorName?: string;
+  notes?: string;
+  recordedBy: string;
+  recordedByName: string;
+  evidenceImage?: string;
+  createdAt: any;
+}
+
 export interface Guild {
   id: string; // The code
   name: string;

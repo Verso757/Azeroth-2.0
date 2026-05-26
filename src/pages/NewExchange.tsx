@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, addDoc, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
+import { collection, addDoc, setDoc, doc, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -25,6 +25,7 @@ export default function NewExchange() {
   const [motifId, setMotifId] = useState('');
   const [price, setPrice] = useState('');
   const [affectedPerson, setAffectedPerson] = useState('');
+  const [newEquipment, setNewEquipment] = useState('');
 
   useEffect(() => {
     if (!profile) return;
@@ -91,6 +92,7 @@ export default function NewExchange() {
         brandName: brand?.name || '',
         motifId,
         motifName: motif?.name || '',
+        newEquipment,
         price: price ? parseFloat(price) : null,
         userId: profile.uid,
         userName: profile.displayName || profile.email,
@@ -99,6 +101,22 @@ export default function NewExchange() {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+
+      // Sobreescribir o crear la responsiva para la ruta
+      await setDoc(doc(db, 'route_responsivas', routeId), {
+        guildId: profile.guildId,
+        cityId,
+        cityName: city?.name || '',
+        routeId,
+        routeName: route?.name || '',
+        equipmentType,
+        brandName: brand?.name || '',
+        newEquipment,
+        userName: profile.displayName || profile.email,
+        affectedPerson,
+        updatedAt: serverTimestamp()
+      });
+
       navigate('/exchanges');
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'equipment_exchanges');
@@ -155,16 +173,29 @@ export default function NewExchange() {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Nombre del Asesor</label>
-            <input 
-              type="text" 
-              required
-              value={affectedPerson}
-              onChange={e => setAffectedPerson(e.target.value)}
-              placeholder="Nombre del Asesor..."
-              className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm font-medium text-slate-900 hover:border-slate-200 focus:border-primary-500 focus:bg-white focus:ring-0 transition-all outline-none"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Nombre del Asesor</label>
+              <input 
+                type="text" 
+                required
+                value={affectedPerson}
+                onChange={e => setAffectedPerson(e.target.value)}
+                placeholder="Nombre del Asesor..."
+                className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm font-medium text-slate-900 hover:border-slate-200 focus:border-primary-500 focus:bg-white focus:ring-0 transition-all outline-none"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">IMEI / Serie / Nuevo Equipo</label>
+              <input 
+                type="text"
+                required
+                value={newEquipment}
+                onChange={e => setNewEquipment(e.target.value)}
+                placeholder="IMEI o No. Serie..."
+                className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm font-medium text-slate-900 hover:border-slate-200 focus:border-primary-500 focus:bg-white focus:ring-0 transition-all outline-none"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

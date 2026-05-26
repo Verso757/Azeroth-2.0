@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { LayoutDashboard, ListTodo, LogOut, PlusCircle, ShieldAlert, Menu, X, User, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, ListTodo, LogOut, PlusCircle, ShieldAlert, Menu, X, User, MessageSquare, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import AIChat from './AIChat';
@@ -23,6 +23,8 @@ export default function Layout() {
     { name: 'Incidencias', path: '/issues', icon: ListTodo },
     { name: 'Nueva Incidencia', path: '/new-issue', icon: PlusCircle },
     { name: 'Cambios', path: '/exchanges', icon: ListTodo },
+    { name: 'Responsivas', path: '/responsivas', icon: FileText },
+    { name: 'Inventario', path: '/assets', icon: LayoutDashboard },
   ];
 
   if (isAdmin) {

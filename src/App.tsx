@@ -14,6 +14,11 @@ import NewIssue from './pages/NewIssue';
 import AdminPanel from './pages/AdminPanel';
 import Exchanges from './pages/Exchanges';
 import NewExchange from './pages/NewExchange';
+import Responsivas from './pages/Responsivas';
+import Assets from './pages/Assets';
+import NewAsset from './pages/NewAsset';
+import AssignAsset from './pages/AssignAsset';
+import AssetHistory from './pages/AssetHistory';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { profile, loading } = useAuth();
@@ -39,6 +44,11 @@ export default function App() {
             <Route path="new-issue" element={<NewIssue />} />
             <Route path="exchanges" element={<Exchanges />} />
             <Route path="new-exchange" element={<NewExchange />} />
+            <Route path="responsivas" element={<Responsivas />} />
+            <Route path="assets" element={<Assets />} />
+            <Route path="new-asset" element={<NewAsset />} />
+            <Route path="assign-asset/:id" element={<AssignAsset />} />
+            <Route path="asset-history/:id" element={<AssetHistory />} />
             <Route path="admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
           </Route>
         </Routes>

@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { collection, onSnapshot, query, orderBy, limit, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Issue, OperationType } from '../types';
+import { Issue, OperationType, Asset } from '../types';
 import { handleFirestoreError } from '../constants';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, Cell, PieChart, Pie } from 'recharts';
-import { AlertCircle, CheckCircle2, Clock, ShieldAlert, TrendingUp, Users, Activity, Zap, Box, ListTodo, Calendar } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock, ShieldAlert, TrendingUp, Users, Activity, Zap, Box, ListTodo, Calendar, Briefcase, MonitorSmartphone } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn, formatDate } from '../lib/utils';
 import { useAuth } from '../AuthContext';
@@ -15,6 +15,7 @@ const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 
 export default function Dashboard() {
   const { profile } = useAuth();
   const [issues, setIssues] = useState<Issue[]>([]);
+  const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
   const [month, setMonth] = useState(new Date().getMonth());
   const [year, setYear] = useState(new Date().getFullYear());
@@ -25,33 +26,39 @@ export default function Dashboard() {
   useEffect(() => {
     if (!profile) return;
     
-    let q = query(collection(db, 'issues'));
+    let qIssues = query(collection(db, 'issues'));
+    let qAssets = query(collection(db, 'assets'));
+    
     if (profile.role !== 'superadmin') {
       const allGuilds = Array.from(new Set([profile.guildId, ...(profile.allowedGuilds || [])])).filter(Boolean).slice(0, 30);
       if (allGuilds.length > 0) {
-        q = query(collection(db, 'issues'), where('guildId', 'in', allGuilds));
+        qIssues = query(collection(db, 'issues'), where('guildId', 'in', allGuilds));
+        qAssets = query(collection(db, 'assets'), where('guildId', 'in', allGuilds));
       }
     }
     
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const issuesList = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Issue[];
-      
+    // Subscribe to issues
+    const unsubscribeIssues = onSnapshot(qIssues, (snapshot) => {
+      const issuesList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Issue[];
       issuesList.sort((a, b) => {
         const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
         const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
         return timeB - timeA;
       });
-      
       setIssues(issuesList);
-      setLoading(false);
-    }, (err) => {
-      handleFirestoreError(err, OperationType.LIST, 'issues');
-    });
+    }, (err) => handleFirestoreError(err, OperationType.LIST, 'issues'));
 
-    return () => unsubscribe();
+    // Subscribe to assets
+    const unsubscribeAssets = onSnapshot(qAssets, (snapshot) => {
+      const assetsList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Asset[];
+      setAssets(assetsList);
+      setLoading(false);
+    }, (err) => handleFirestoreError(err, OperationType.LIST, 'assets'));
+
+    return () => {
+      unsubscribeIssues();
+      unsubscribeAssets();
+    };
   }, [profile]);
 
   const guildsList = Array.from(new Set(issues.map(i => i.guildId).filter(Boolean)));
@@ -73,15 +80,22 @@ export default function Dashboard() {
       }
       return true;
     });
-  }, [issues, month, year, week]);
+  }, [issues, month, year, week, guildFilt, cityFilt]);
 
   const stats = {
-    total: filteredIssues.length,
-    open: filteredIssues.filter(i => i.status === 'open').length,
-    inProgress: filteredIssues.filter(i => i.status === 'in_progress').length,
+    active: filteredIssues.filter(i => i.status !== 'resolved' && i.status !== 'closed').length,
     resolved: filteredIssues.filter(i => i.status === 'resolved').length,
     critical: filteredIssues.filter(i => i.priority === 'critical').length,
-    active: filteredIssues.filter(i => i.status !== 'resolved' && i.status !== 'closed').length,
+    open: filteredIssues.filter(i => i.status === 'open').length,
+    inProgress: filteredIssues.filter(i => i.status === 'in_progress').length,
+  };
+
+  const assetStats = {
+    total: assets.length,
+    assigned: assets.filter(a => a.status === 'assigned').length,
+    maintenance: assets.filter(a => a.status === 'maintenance').length,
+    available: assets.filter(a => a.status === 'available').length,
+    lost: assets.filter(a => a.status === 'lost').length,
   };
 
   const weekDataMap = useMemo(() => {
@@ -111,6 +125,7 @@ export default function Dashboard() {
     { name: 'En Proceso', value: stats.inProgress },
     { name: 'Resuelto', value: stats.resolved },
   ];
+
 
   return (
     <div className="space-y-10">
@@ -177,7 +192,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <GlassCard 
           label="Incidencias Activas" 
           value={stats.active} 
@@ -198,6 +213,13 @@ export default function Dashboard() {
           icon={AlertCircle} 
           color="red" 
           description="Requiere atención inmediata"
+        />
+        <GlassCard 
+          label="Total Activos" 
+          value={assetStats.total} 
+          icon={MonitorSmartphone} 
+          color="blue" 
+          description={`${assetStats.assigned} asingados / ${assetStats.maintenance} mtto / ${assetStats.lost} extrav.`}
         />
       </div>
 
