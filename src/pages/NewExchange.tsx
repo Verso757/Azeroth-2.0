@@ -122,6 +122,7 @@ export default function NewExchange() {
         equipmentType: asset.type || '',
         brandName: asset.brandName || '',
         newEquipment: asset.uid || '',
+        userId: profile.uid || '',
         userName: profile.displayName || profile.email || '',
         affectedPerson: affectedPerson || '',
         updatedAt: serverTimestamp()
