@@ -90,7 +90,7 @@ export default function NewExchange() {
       // 1. Registrar Cambio de Equipo
       const exchangeRef = doc(collection(db, 'equipment_exchanges'));
       batch.set(exchangeRef, {
-        guildId: profile.guildId,
+        guildId: asset.guildId || profile.guildId,
         cityId,
         cityName: city?.name || '',
         routeId,
@@ -113,7 +113,7 @@ export default function NewExchange() {
       // 2. Sobreescribir o crear la responsiva para la ruta
       const responsivaRef = doc(db, 'route_responsivas', routeId);
       batch.set(responsivaRef, {
-        guildId: profile.guildId,
+        guildId: asset.guildId || profile.guildId,
         cityId,
         cityName: city?.name || '',
         routeId,
@@ -124,7 +124,7 @@ export default function NewExchange() {
         userName: profile.displayName || profile.email,
         affectedPerson,
         updatedAt: serverTimestamp()
-      });
+      }, { merge: true });
 
       // 3. Actualizar estado del activo (Asset) a "asignado"
       const assetRef = doc(db, 'assets', selectedAssetId);
@@ -141,7 +141,7 @@ export default function NewExchange() {
       // 4. Registrar transacción del activo (Assignment)
       const txRef = doc(collection(db, 'asset_transactions'));
       batch.set(txRef, {
-        guildId: profile.guildId,
+        guildId: asset.guildId || profile.guildId,
         assetId: asset.id,
         assetUid: asset.uid,
         assetType: asset.type,
@@ -160,9 +160,9 @@ export default function NewExchange() {
       await batch.commit();
 
       navigate('/exchanges');
-    } catch (error) {
+    } catch (error: any) {
       handleFirestoreError(error, OperationType.CREATE, 'equipment_exchanges');
-      alert('Error al guardar el registro y asignar inventario');
+      alert('Error al guardar el registro y asignar inventario: ' + (error?.message || 'Error desconocido'));
     } finally {
       setSubmitting(false);
     }
