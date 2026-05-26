@@ -82,6 +82,7 @@ export default function NewExchange() {
 
       if (!asset) {
          setSubmitting(false);
+         alert("Por favor selecciona un activo válido del inventario.");
          return;
       }
 
@@ -90,22 +91,22 @@ export default function NewExchange() {
       // 1. Registrar Cambio de Equipo
       const exchangeRef = doc(collection(db, 'equipment_exchanges'));
       batch.set(exchangeRef, {
-        guildId: asset.guildId || profile.guildId,
-        cityId,
+        guildId: asset.guildId || profile.guildId || '',
+        cityId: cityId || '',
         cityName: city?.name || '',
-        routeId,
+        routeId: routeId || '',
         routeName: route?.name || '',
-        equipmentType: asset.type,
+        equipmentType: asset.type || '',
         brandId: asset.brandId || '',
         brandName: asset.brandName || '',
-        motifId,
+        motifId: motifId || '',
         motifName: motif?.name || '',
-        newEquipment: asset.uid,
+        newEquipment: asset.uid || '',
         price: price ? parseFloat(price) : null,
-        userId: profile.uid,
-        userName: profile.displayName || profile.email,
-        userEmail: profile.email,
-        affectedPerson,
+        userId: profile.uid || '',
+        userName: profile.displayName || profile.email || '',
+        userEmail: profile.email || '',
+        affectedPerson: affectedPerson || '',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -113,16 +114,16 @@ export default function NewExchange() {
       // 2. Sobreescribir o crear la responsiva para la ruta
       const responsivaRef = doc(db, 'route_responsivas', routeId);
       batch.set(responsivaRef, {
-        guildId: asset.guildId || profile.guildId,
-        cityId,
+        guildId: asset.guildId || profile.guildId || '',
+        cityId: cityId || '',
         cityName: city?.name || '',
-        routeId,
+        routeId: routeId || '',
         routeName: route?.name || '',
-        equipmentType: asset.type,
+        equipmentType: asset.type || '',
         brandName: asset.brandName || '',
-        newEquipment: asset.uid,
-        userName: profile.displayName || profile.email,
-        affectedPerson,
+        newEquipment: asset.uid || '',
+        userName: profile.displayName || profile.email || '',
+        affectedPerson: affectedPerson || '',
         updatedAt: serverTimestamp()
       }, { merge: true });
 
@@ -130,30 +131,30 @@ export default function NewExchange() {
       const assetRef = doc(db, 'assets', selectedAssetId);
       batch.update(assetRef, {
         status: 'assigned',
-        currentRouteId: routeId,
+        currentRouteId: routeId || '',
         currentRouteName: route?.name || '',
-        currentCityId: cityId,
+        currentCityId: cityId || '',
         currentCityName: city?.name || '',
-        currentSupervisor: affectedPerson,
+        currentSupervisor: affectedPerson || '',
         updatedAt: serverTimestamp()
       });
 
       // 4. Registrar transacción del activo (Assignment)
       const txRef = doc(collection(db, 'asset_transactions'));
       batch.set(txRef, {
-        guildId: asset.guildId || profile.guildId,
-        assetId: asset.id,
-        assetUid: asset.uid,
-        assetType: asset.type,
+        guildId: asset.guildId || profile.guildId || '',
+        assetId: asset.id || '',
+        assetUid: asset.uid || '',
+        assetType: asset.type || '',
         type: 'assignment',
         fromStatus: 'available',
         toStatus: 'assigned',
-        routeId,
+        routeId: routeId || '',
         routeName: route?.name || '',
-        supervisorName: affectedPerson,
+        supervisorName: affectedPerson || '',
         notes: `Asignado por cambio (Motivo: ${motif?.name || ''})`,
-        recordedBy: profile.uid,
-        recordedByName: profile.displayName || profile.email,
+        recordedBy: profile.uid || '',
+        recordedByName: profile.displayName || profile.email || '',
         createdAt: serverTimestamp()
       });
 
