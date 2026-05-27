@@ -131,6 +131,7 @@ export default function NewExchange() {
       // 3. Actualizar estado del activo (Asset) a "asignado"
       const assetRef = doc(db, 'assets', selectedAssetId);
       batch.update(assetRef, {
+        guildId: asset.guildId || profile.guildId || '',
         status: 'assigned',
         currentRouteId: routeId || '',
         currentRouteName: route?.name || '',

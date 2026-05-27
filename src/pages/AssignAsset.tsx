@@ -162,6 +162,7 @@ export default function AssignAsset() {
                        operation === 'lost' ? 'lost' : 'available';
 
       const updateData: any = {
+        guildId: asset.guildId || profile.guildId || '',
         status: toStatus,
         updatedAt: serverTimestamp()
       };
@@ -185,7 +186,7 @@ export default function AssignAsset() {
 
       const txRef = doc(collection(db, 'asset_transactions'));
       batch.set(txRef, {
-        guildId: asset.guildId,
+        guildId: asset.guildId || profile.guildId || '',
         assetId: asset.id,
         assetUid: asset.uid,
         assetType: asset.type,
@@ -206,7 +207,7 @@ export default function AssignAsset() {
       if (operation === 'assign') {
         const responsivaRef = doc(db, 'route_responsivas', selectedRoute);
         batch.set(responsivaRef, {
-          guildId: asset.guildId,
+          guildId: asset.guildId || profile.guildId || '',
           cityId: selectedCity,
           cityName: city?.name || '',
           routeId: selectedRoute,
@@ -214,6 +215,7 @@ export default function AssignAsset() {
           equipmentType: asset.type,
           brandName: asset.brandName || '',
           newEquipment: asset.uid,
+          userId: profile.uid,
           userName: profile.displayName || profile.email,
           affectedPerson: supervisorName,
           updatedAt: serverTimestamp()
@@ -223,9 +225,9 @@ export default function AssignAsset() {
       await batch.commit();
       navigate('/assets');
 
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert('Error en la transacción');
+      alert('Error en la transacción: ' + (error?.message || 'Error desconocido'));
     } finally {
       setSubmitting(false);
     }
