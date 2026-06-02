@@ -59,8 +59,11 @@ export default function AssignAsset() {
   // Assignment states
   const [cities, setCities] = useState<City[]>([]);
   const [routes, setRoutes] = useState<Route[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [assignmentTarget, setAssignmentTarget] = useState<'route' | 'employee'>('route');
   const [selectedCity, setSelectedCity] = useState('');
   const [selectedRoute, setSelectedRoute] = useState('');
+  const [selectedEmployee, setSelectedEmployee] = useState('');
   const [supervisorName, setSupervisorName] = useState('');
   const [notes, setNotes] = useState('');
   const [evidenceBase64, setEvidenceBase64] = useState<string | null>(null);
@@ -86,6 +89,9 @@ export default function AssignAsset() {
         const allowedGuilds = profile.allowedGuilds ? [profile.guildId, ...profile.allowedGuilds] : [profile.guildId];
         const citySnap = await getDocs(query(collection(db, 'cities'), where('guildId', 'in', allowedGuilds.slice(0, 30))));
         setCities(citySnap.docs.map(d => ({ id: d.id, ...d.data() } as City)).sort((a,b) => (a.name || '').localeCompare(b.name || '')));
+
+        const empSnap = await getDocs(query(collection(db, 'employees'), where('guildId', 'in', allowedGuilds.slice(0, 30))));
+        setEmployees(empSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a:any, b:any) => (a.name || '').localeCompare(b.name || '')));
       } catch (err) {
         console.error(err);
       }
@@ -133,14 +139,31 @@ export default function AssignAsset() {
     }
   };
 
+  const handleRouteChange = (rId: string) => {
+    setSelectedRoute(rId);
+    const rt = routes.find(r => r.id === rId);
+    if (rt && rt.employeeId) {
+      const emp = employees.find(e => e.id === rt.employeeId);
+      if (emp) setSupervisorName(emp.name);
+    } else {
+      setSupervisorName('');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile || !asset) return;
     
     // validation
-    if (operation === 'assign' && (!selectedCity || !selectedRoute || !supervisorName)) {
-      alert("Selecciona ciudad, ruta y asesor");
-      return;
+    if (operation === 'assign') {
+      if (assignmentTarget === 'route' && (!selectedCity || !selectedRoute || !supervisorName)) {
+        alert("Selecciona ciudad, ruta y asesor");
+        return;
+      }
+      if (assignmentTarget === 'employee' && !selectedEmployee) {
+        alert("Selecciona al personal administrativo / asesor");
+        return;
+      }
     }
 
     if ((operation === 'lost' || operation === 'retirement') && !evidenceBase64) {
@@ -154,6 +177,7 @@ export default function AssignAsset() {
       
       const city = cities.find(c => c.id === selectedCity);
       const route = routes.find(r => r.id === selectedRoute);
+      const employee = employees.find(e => e.id === selectedEmployee);
 
       const toStatus = operation === 'assign' ? 'assigned' :
                        operation === 'return' ? 'available' :
@@ -168,11 +192,19 @@ export default function AssignAsset() {
       };
 
       if (operation === 'assign') {
-        updateData.currentCityId = selectedCity;
-        updateData.currentCityName = city?.name;
-        updateData.currentRouteId = selectedRoute;
-        updateData.currentRouteName = route?.name;
-        updateData.currentSupervisor = supervisorName;
+        if (assignmentTarget === 'route') {
+          updateData.currentCityId = selectedCity;
+          updateData.currentCityName = city?.name;
+          updateData.currentRouteId = selectedRoute;
+          updateData.currentRouteName = route?.name;
+          updateData.currentSupervisor = supervisorName;
+        } else {
+          updateData.currentCityId = 'N/A';
+          updateData.currentCityName = 'Personal Administrativo';
+          updateData.currentRouteId = selectedEmployee;
+          updateData.currentRouteName = employee?.name || 'Administrativo';
+          updateData.currentSupervisor = employee?.name || 'Personal Administrativo';
+        }
       } else if (operation === 'return') {
         // Clear assignment
         updateData.currentCityId = null;
@@ -185,6 +217,11 @@ export default function AssignAsset() {
       batch.update(doc(db, 'assets', asset.id), updateData);
 
       const txRef = doc(collection(db, 'asset_transactions'));
+      
+      const txRouteId = operation === 'assign' ? (assignmentTarget === 'route' ? selectedRoute : selectedEmployee) : (asset.currentRouteId || null);
+      const txRouteName = operation === 'assign' ? (assignmentTarget === 'route' ? route?.name : employee?.name) : (asset.currentRouteName || null);
+      const txSup = operation === 'assign' ? (assignmentTarget === 'route' ? supervisorName : employee?.name) : (asset.currentSupervisor || null);
+      
       batch.set(txRef, {
         guildId: asset.guildId || profile.guildId || '',
         assetId: asset.id,
@@ -193,9 +230,9 @@ export default function AssignAsset() {
         type: operation,
         fromStatus: asset.status,
         toStatus: toStatus,
-        routeId: operation === 'assign' ? selectedRoute : (asset.currentRouteId || null),
-        routeName: operation === 'assign' ? route?.name : (asset.currentRouteName || null),
-        supervisorName: operation === 'assign' ? supervisorName : (asset.currentSupervisor || null),
+        routeId: txRouteId,
+        routeName: txRouteName,
+        supervisorName: txSup,
         notes,
         evidenceImage: evidenceBase64 || null,
         recordedBy: profile.uid,
@@ -205,19 +242,35 @@ export default function AssignAsset() {
 
       // Update route responsiva
       if (operation === 'assign') {
-        const responsivaRef = doc(db, 'route_responsivas', selectedRoute);
+        const respId = assignmentTarget === 'route' ? selectedRoute : selectedEmployee;
+        const responsivaRef = doc(db, 'route_responsivas', respId);
+        
+        let existingSig = null;
+        if (assignmentTarget === 'route') {
+           const routeRef = routes.find(r => r.id === selectedRoute);
+           if (routeRef && routeRef.employeeId) {
+             const emp = employees.find(e => e.id === routeRef.employeeId);
+             if (emp && emp.signatureUrl) existingSig = emp.signatureUrl;
+           }
+        } else {
+           if (employee && employee.signatureUrl) {
+              existingSig = employee.signatureUrl;
+           }
+        }
+
         batch.set(responsivaRef, {
           guildId: asset.guildId || profile.guildId || '',
-          cityId: selectedCity,
-          cityName: city?.name || '',
-          routeId: selectedRoute,
-          routeName: route?.name || '',
+          cityId: assignmentTarget === 'route' ? selectedCity : 'N/A',
+          cityName: assignmentTarget === 'route' ? (city?.name || '') : 'Administrativo',
+          routeId: respId,
+          routeName: (assignmentTarget === 'route' ? route?.name : employee?.name) || '',
           equipmentType: asset.type,
           brandName: asset.brandName || '',
           newEquipment: asset.uid,
           userId: profile.uid,
           userName: profile.displayName || profile.email,
-          affectedPerson: supervisorName,
+          affectedPerson: txSup,
+          ...(existingSig ? { digitalSignature: existingSig } : {}),
           updatedAt: serverTimestamp()
         }, { merge: true });
       }
@@ -325,43 +378,70 @@ export default function AssignAsset() {
 
           {operation === 'assign' && (
             <div className="space-y-6 pt-6 border-t border-slate-100">
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <div className="space-y-2">
-                   <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Ciudad</label>
-                   <select 
-                     value={selectedCity}
-                     onChange={e => setSelectedCity(e.target.value)}
-                     className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm font-medium text-slate-900 hover:border-slate-200 focus:border-primary-500 focus:bg-white focus:ring-0 transition-all outline-none"
-                   >
-                     <option value="">Selecciona Ciudad</option>
-                     {cities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                   </select>
-                 </div>
-                 <div className="space-y-2">
-                   <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Ruta</label>
-                   <select 
-                     value={selectedRoute}
-                     onChange={e => setSelectedRoute(e.target.value)}
-                     disabled={!selectedCity}
-                     className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm font-medium text-slate-900 hover:border-slate-200 focus:border-primary-500 focus:bg-white focus:ring-0 transition-all outline-none disabled:opacity-50"
-                   >
-                     <option value="">Selecciona Ruta</option>
-                     {routes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                   </select>
-                 </div>
+               <div className="flex gap-4 mb-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" checked={assignmentTarget === 'route'} onChange={() => setAssignmentTarget('route')} className="text-primary-600 focus:ring-primary-500" />
+                    <span className="text-sm font-bold text-slate-700">Asignar a Ruta</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" checked={assignmentTarget === 'employee'} onChange={() => setAssignmentTarget('employee')} className="text-primary-600 focus:ring-primary-500" />
+                    <span className="text-sm font-bold text-slate-700">Asignar a Personal</span>
+                  </label>
                </div>
 
-               <div className="space-y-2">
-                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Nombre del Asesor</label>
-                 <input 
-                   type="text"
-                   required
-                   value={supervisorName}
-                   onChange={e => setSupervisorName(e.target.value)}
-                   placeholder="Ej. Juan Pérez"
-                   className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm font-medium text-slate-900 hover:border-slate-200 focus:border-primary-500 focus:bg-white focus:ring-0 transition-all outline-none"
-                 />
-               </div>
+               {assignmentTarget === 'route' ? (
+                 <>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                     <div className="space-y-2">
+                       <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Ciudad</label>
+                       <select 
+                         value={selectedCity}
+                         onChange={e => setSelectedCity(e.target.value)}
+                         className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm font-medium text-slate-900 hover:border-slate-200 focus:border-primary-500 focus:bg-white focus:ring-0 transition-all outline-none"
+                       >
+                         <option value="">Selecciona Ciudad</option>
+                         {cities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                       </select>
+                     </div>
+                     <div className="space-y-2">
+                       <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Ruta</label>
+                       <select 
+                         value={selectedRoute}
+                         onChange={e => handleRouteChange(e.target.value)}
+                         disabled={!selectedCity}
+                         className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm font-medium text-slate-900 hover:border-slate-200 focus:border-primary-500 focus:bg-white focus:ring-0 transition-all outline-none disabled:opacity-50"
+                       >
+                         <option value="">Selecciona Ruta</option>
+                         {routes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                       </select>
+                     </div>
+                   </div>
+    
+                   <div className="space-y-2">
+                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Nombre del Asesor</label>
+                     <input 
+                       type="text"
+                       required
+                       value={supervisorName}
+                       onChange={e => setSupervisorName(e.target.value)}
+                       placeholder="Ej. Juan Pérez"
+                       className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm font-medium text-slate-900 hover:border-slate-200 focus:border-primary-500 focus:bg-white focus:ring-0 transition-all outline-none"
+                     />
+                   </div>
+                 </>
+               ) : (
+                 <div className="space-y-2">
+                   <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Personal Administrativo / Asesor</label>
+                   <select 
+                     value={selectedEmployee}
+                     onChange={e => setSelectedEmployee(e.target.value)}
+                     className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm font-medium text-slate-900 hover:border-slate-200 focus:border-primary-500 focus:bg-white focus:ring-0 transition-all outline-none"
+                   >
+                     <option value="">Selecciona Personal</option>
+                     {employees.map(e => <option key={e.id} value={e.id}>{e.name} {e.position ? `(${e.position})` : ''}</option>)}
+                   </select>
+                 </div>
+               )}
             </div>
           )}
 

@@ -4,16 +4,20 @@ import { db } from '../firebase';
 import { useAuth } from '../AuthContext';
 import { Issue, OperationType, UserProfile, Area } from '../types';
 import { handleFirestoreError } from '../constants';
-import { ShieldCheck, MessageSquare, ArrowRight, UserCheck, Search, Users, LayoutGrid, Trash2, Plus, Settings2, Activity, Loader2 } from 'lucide-react';
+import { ShieldCheck, MessageSquare, ArrowRight, UserCheck, Search, Users, LayoutGrid, Trash2, Plus, Settings2, Activity, Loader2, PenTool, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, formatDate } from '../lib/utils';
 import DataConfig from '../components/DataConfig';
+import SignatureCanvas from 'react-signature-canvas';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../firebase';
 
 export default function AdminPanel() {
   const { profile } = useAuth();
   const [issues, setIssues] = useState<Issue[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
   const [guilds, setGuilds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'issues' | 'users' | 'areas' | 'settings' | 'guilds' | 'catalogs'>('issues');
@@ -25,6 +29,10 @@ export default function AdminPanel() {
   const [newGuildCode, setNewGuildCode] = useState('');
   const [newGuildName, setNewGuildName] = useState('');
   const [currentTheme, setCurrentTheme] = useState('blue');
+
+  const [signingEmployee, setSigningEmployee] = useState<any | null>(null);
+  const [savingSignature, setSavingSignature] = useState(false);
+  const sigCanvas = useRef<any>(null);
 
   // Load guilds first to set initial selectedAdminGuild
   useEffect(() => {
@@ -62,6 +70,7 @@ export default function AdminPanel() {
     let issuesQuery = query(collection(db, 'issues'), where('guildId', '==', selectedAdminGuild));
     let usersQuery = query(collection(db, 'users'), where('guildId', '==', selectedAdminGuild));
     let areasQuery = query(collection(db, 'areas'), where('guildId', '==', selectedAdminGuild));
+    let employeesQuery = query(collection(db, 'employees'), where('guildId', '==', selectedAdminGuild));
 
     const unsubIssues = onSnapshot(issuesQuery, (snapshot) => {
       const issuesList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Issue[];
@@ -88,6 +97,10 @@ export default function AdminPanel() {
       setAreas(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Area[]);
     });
 
+    const unsubEmployees = onSnapshot(employeesQuery, (snapshot) => {
+      setEmployees(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
     const unsubSettings = onSnapshot(doc(db, 'settings', selectedAdminGuild), (docSnap) => {
       if (docSnap.exists()) {
         setCurrentTheme(docSnap.data().themeColor || 'blue');
@@ -100,9 +113,41 @@ export default function AdminPanel() {
       unsubIssues();
       unsubUsers();
       unsubAreas();
+      unsubEmployees();
       unsubSettings();
     };
   }, [profile, selectedAdminGuild]);
+
+  const handleSaveSignature = async () => {
+    if (!signingEmployee || !sigCanvas.current || sigCanvas.current.isEmpty()) return;
+    setSavingSignature(true);
+    try {
+      const canvas = sigCanvas.current.getTrimmedCanvas();
+      const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/png'));
+      if (!blob) throw new Error("No se pudo generar la imagen de la firma.");
+
+      const storageRef = ref(storage, `employee_signatures/${signingEmployee.id}/${Date.now()}_signature.png`);
+      const snapshot = await uploadBytes(storageRef, blob);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+
+      await updateDoc(doc(db, 'employees', signingEmployee.id), {
+        signatureUrl: downloadURL,
+        updatedAt: serverTimestamp()
+      });
+      setSigningEmployee(null);
+    } catch (err) {
+      console.error(err);
+      alert('Error al guardar la firma.');
+    } finally {
+      setSavingSignature(false);
+    }
+  };
+
+  const clearSignature = () => {
+    if (sigCanvas.current) {
+      sigCanvas.current.clear();
+    }
+  };
 
   const handleUpdateTheme = async (color: string) => {
     if (!profile) return;
@@ -441,7 +486,10 @@ export default function AdminPanel() {
                 <DataConfig 
                   collectionName="routes" 
                   title="Rutas" 
-                  fields={[ { name: 'name', label: 'Nombre' } ]} 
+                  fields={[ 
+                    { name: 'name', label: 'Nombre' },
+                    { name: 'employeeId', label: 'Asesor asignado', type: 'select', options: employees.map(e => ({ value: e.id, label: e.name })) }
+                  ]} 
                   parentCollection={{ name: 'cities', localField: 'cityId', parentField: 'name', docNameField: 'Ciudad' }}
                   selectedGuild={selectedAdminGuild}
                 />
@@ -466,6 +514,24 @@ export default function AdminPanel() {
                       { name: 'type', label: 'Tipo de Equipo', type: 'select', options: [{value: 'Celular', label:'Celular'}, {value: 'Impresora Térmica', label:'Impresora Térmica'}, {value:'Otro', label:'Otro'}] } 
                     ]} 
                     selectedGuild={selectedAdminGuild}
+                  />
+                </div>
+                <div className="md:col-span-2 xl:col-span-1">
+                  <DataConfig 
+                    collectionName="employees" 
+                    title="Personal / Asesores" 
+                    fields={[ 
+                      { name: 'name', label: 'Nombre Completo' },
+                      { name: 'position', label: 'Cargo o Puesto', type: 'select', options: [{value: 'Asesor', label:'Asesor'}, {value: 'Supervisor', label:'Supervisor'}, {value: 'Administrativo', label:'Administrativo'}] } 
+                    ]} 
+                    selectedGuild={selectedAdminGuild}
+                    extraActions={[
+                      { 
+                        icon: <PenTool className="w-3.5 h-3.5" />, 
+                        title: "Firmar Documentos", 
+                        onClick: (item) => setSigningEmployee(item)
+                      }
+                    ]}
                   />
                 </div>
              </div>
@@ -508,6 +574,59 @@ export default function AdminPanel() {
                </div>
              </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Signature Modal */}
+      <AnimatePresence>
+        {signingEmployee && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-slate-800">Firma de Asesor</h3>
+                <button onClick={() => setSigningEmployee(null)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5"/></button>
+              </div>
+              
+              <div className="mb-4 space-y-1">
+                 <p className="text-sm text-slate-600">Alta de firma para: <strong className="text-slate-800">{signingEmployee.name}</strong></p>
+                 {signingEmployee.signatureUrl && (
+                   <p className="text-xs text-emerald-600 font-medium">Este asesor ya tiene una firma guardada. Al crear una nueva se sobreescribirá.</p>
+                 )}
+              </div>
+
+              <div className="border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 relative h-[250px] mb-4">
+                <SignatureCanvas 
+                  ref={sigCanvas}
+                  penColor="black"
+                  canvasProps={{ className: 'w-full h-full rounded-xl flex-shrink-0' }}
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={clearSignature}
+                  disabled={savingSignature}
+                  className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex-1"
+                >
+                  Limpiar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveSignature}
+                  disabled={savingSignature}
+                  className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors flex-1 flex items-center justify-center shrink-0"
+                >
+                  {savingSignature ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Guardar Firma'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

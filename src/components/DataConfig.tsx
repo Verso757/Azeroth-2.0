@@ -12,6 +12,7 @@ interface DataConfigProps {
   fields?: { name: string; label: string; type?: 'text' | 'select'; options?: {value:string, label:string}[] }[];
   parentCollection?: { name: string; localField: string; parentField: string; docNameField: string };
   selectedGuild?: string;
+  extraActions?: ({ icon: React.ReactNode; title: string; onClick: (item: any) => void })[];
 }
 
 const getIconForCollection = (name: string) => {
@@ -264,6 +265,16 @@ export default function DataConfig({ collectionName, title, fields = [], parentC
                       </div>
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {extraActions?.map((act, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => act.onClick(item)}
+                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors shrink-0"
+                          title={act.title}
+                        >
+                          {act.icon}
+                        </button>
+                      ))}
                       <button
                         onClick={() => startEdit(item)}
                         className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors shrink-0"

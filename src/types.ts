@@ -69,6 +69,7 @@ export interface Route {
   id: string;
   cityId: string;
   name: string;
+  employeeId?: string;
 }
 
 export interface Category {
@@ -109,6 +110,16 @@ export interface EquipmentExchange {
   userName: string;
   userEmail: string;
   affectedPerson: string;
+  createdAt: any;
+  updatedAt: any;
+}
+
+export interface Employee {
+  id: string;
+  guildId: string;
+  name: string;
+  position: string;
+  signatureUrl?: string;
   createdAt: any;
   updatedAt: any;
 }

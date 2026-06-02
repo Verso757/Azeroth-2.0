@@ -72,6 +72,13 @@ service cloud.firestore {
       allow delete: if isAdmin() && isSameGuild(existing().get('guildId', ''));
     }
 
+    match /employees/{employeeId} {
+      allow read: if isSignedIn() && isSameGuild(resource.data.guildId);
+      allow create: if isAdmin() && isSameGuild(incoming().get('guildId', ''));
+      allow update: if isAdmin() && isSameGuild(existing().get('guildId', '')) && (incoming().get('guildId', '') == existing().get('guildId', '') || existing().get('guildId', '') == '');
+      allow delete: if isAdmin() && isSameGuild(existing().get('guildId', ''));
+    }
+
     match /routes/{routeId} {
       // Routes belong to cities, so we check if the city belongs to the user's guild
       allow read: if isSignedIn() && isSameGuild(get(/databases/$(database)/documents/cities/$(resource.data.cityId)).data.guildId);

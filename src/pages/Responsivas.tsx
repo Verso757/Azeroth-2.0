@@ -1,48 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '../firebase';
 import { useAuth } from '../AuthContext';
 import { RouteResponsiva, OperationType } from '../types';
 import { handleFirestoreError } from '../constants';
 import { Printer, Search, MapPin, Upload, FileImage, CheckCircle2, PenTool } from 'lucide-react';
 import SignatureCanvas from 'react-signature-canvas';
 
-const compressImage = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target?.result as string;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 800; // max reasonable size for document scan to keep under 1MB base64
-        const MAX_HEIGHT = 800;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.6)); // compress to 60% jpeg
-      };
-    };
-    reader.onerror = error => reject(error);
-  });
-};
+const compressImage = undefined; // Deleted
 
 export default function Responsivas() {
   const { profile } = useAuth();
@@ -97,23 +63,26 @@ export default function Responsivas() {
   const handleUploadScan = async (responsivaId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
-    // Check file size (max ~5MB before compression to avoid browser freezing)
-    if (file.size > 5 * 1024 * 1024) {
-       alert("El archivo es demasiado grande. Por favor sube una imagen menor a 5MB.");
-       return;
-    }
 
     setUploadingId(responsivaId);
     try {
-       const compressedBase64 = await compressImage(file);
-       await updateDoc(doc(db, 'route_responsivas', responsivaId), {
-         scannedDocument: compressedBase64,
-         updatedAt: serverTimestamp()
-       });
+      // Create a reference to the file in Firebase Storage
+      const storageRef = ref(storage, `responsivas/${responsivaId}/${Date.now()}_${file.name}`);
+      
+      // Upload the file
+      const snapshot = await uploadBytes(storageRef, file);
+      
+      // Get the download URL
+      const downloadURL = await getDownloadURL(snapshot.ref);
+
+      // Update Firestore document securely with the reliable URL
+      await updateDoc(doc(db, 'route_responsivas', responsivaId), {
+        scannedDocument: downloadURL,
+        updatedAt: serverTimestamp()
+      });
     } catch (err) {
       console.error(err);
-      alert('Error al agrupar la imagen en la base de datos.');
+      alert('Error al subir la imagen. Por favor, intenta de nuevo.');
     } finally {
       setUploadingId(null);
     }
@@ -127,9 +96,19 @@ export default function Responsivas() {
     
     setUploadingId(signingDoc.id);
     try {
-      const dataUrl = sigCanvas.current.getTrimmedCanvas().toDataURL('image/png');
+      // Get the signature canvas as a blob
+      const canvas = sigCanvas.current.getTrimmedCanvas();
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+      
+      if (!blob) throw new Error("No se pudo generar la imagen de la firma.");
+
+      // Upload signature to Firebase Storage
+      const storageRef = ref(storage, `signatures/${signingDoc.id}/${Date.now()}_signature.png`);
+      const snapshot = await uploadBytes(storageRef, blob);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+
       await updateDoc(doc(db, 'route_responsivas', signingDoc.id), {
-        digitalSignature: dataUrl,
+        digitalSignature: downloadURL,
         updatedAt: serverTimestamp()
       });
       setSigningDoc(null);
