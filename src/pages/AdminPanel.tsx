@@ -18,10 +18,11 @@ export default function AdminPanel() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
+  const [equipmentTypes, setEquipmentTypes] = useState<any[]>([]);
   const [guilds, setGuilds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'issues' | 'users' | 'areas' | 'settings' | 'guilds' | 'catalogs'>('issues');
-  const [activeCatalog, setActiveCatalog] = useState<'cities' | 'routes' | 'categories' | 'motifs' | 'brands' | 'employees'>('cities');
+  const [activeCatalog, setActiveCatalog] = useState<'cities' | 'routes' | 'categories' | 'motifs' | 'brands' | 'employees' | 'equipmentTypes'>('cities');
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [resolutionText, setResolutionText] = useState('');
   const [selectedAdminGuild, setSelectedAdminGuild] = useState<string>('');
@@ -72,6 +73,7 @@ export default function AdminPanel() {
     let usersQuery = query(collection(db, 'users'), where('guildId', '==', selectedAdminGuild));
     let areasQuery = query(collection(db, 'areas'), where('guildId', '==', selectedAdminGuild));
     let employeesQuery = query(collection(db, 'employees'), where('guildId', '==', selectedAdminGuild));
+    let equipmentTypesQuery = query(collection(db, 'equipmentTypes'), where('guildId', '==', selectedAdminGuild));
 
     const unsubIssues = onSnapshot(issuesQuery, (snapshot) => {
       const issuesList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Issue[];
@@ -102,6 +104,10 @@ export default function AdminPanel() {
       setEmployees(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 
+    const unsubEquipmentTypes = onSnapshot(equipmentTypesQuery, (snapshot) => {
+      setEquipmentTypes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
     const unsubSettings = onSnapshot(doc(db, 'settings', selectedAdminGuild), (docSnap) => {
       if (docSnap.exists()) {
         setCurrentTheme(docSnap.data().themeColor || 'blue');
@@ -115,6 +121,7 @@ export default function AdminPanel() {
       unsubUsers();
       unsubAreas();
       unsubEmployees();
+      unsubEquipmentTypes();
       unsubSettings();
     };
   }, [profile, selectedAdminGuild]);
@@ -483,6 +490,7 @@ export default function AdminPanel() {
                  { id: 'routes', label: 'Rutas' },
                  { id: 'categories', label: 'Incidencias' },
                  { id: 'motifs', label: 'Motivos de Cambio' },
+                 { id: 'equipmentTypes', label: 'Tipos de Equipo' },
                  { id: 'brands', label: 'Marcas / Modelos' },
                  { id: 'employees', label: 'Personal / Asesores' }
                ].map(cat => (
@@ -542,13 +550,22 @@ export default function AdminPanel() {
                   />
                 )}
 
+                {activeCatalog === 'equipmentTypes' && (
+                  <DataConfig 
+                    collectionName="equipmentTypes" 
+                    title="Tipos de Equipo" 
+                    fields={[ { name: 'name', label: 'Tipo' } ]} 
+                    selectedGuild={selectedAdminGuild}
+                  />
+                )}
+
                 {activeCatalog === 'brands' && (
                   <DataConfig 
                     collectionName="brands" 
                     title="Marcas / Modelos de Equipos" 
                     fields={[ 
                       { name: 'name', label: 'Nombre/Modelo' },
-                      { name: 'type', label: 'Tipo de Equipo', type: 'select', options: [{value: 'Celular', label:'Celular'}, {value: 'Impresora Térmica', label:'Impresora Térmica'}, {value:'Otro', label:'Otro'}] } 
+                      { name: 'type', label: 'Tipo de Equipo', type: 'select', options: equipmentTypes.map(e => ({ value: e.name, label: e.name })) } 
                     ]} 
                     selectedGuild={selectedAdminGuild}
                   />
