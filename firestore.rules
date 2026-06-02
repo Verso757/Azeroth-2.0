@@ -101,6 +101,13 @@ service cloud.firestore {
       allow delete: if isAdmin() && isSameGuild(existing().get('guildId', ''));
     }
 
+    match /equipmentTypes/{equipmentTypeId} {
+      allow read: if isSignedIn() && isSameGuild(resource.data.guildId);
+      allow create: if isAdmin() && isSameGuild(incoming().get('guildId', ''));
+      allow update: if isAdmin() && isSameGuild(existing().get('guildId', '')) && (incoming().get('guildId', '') == existing().get('guildId', '') || existing().get('guildId', '') == '');
+      allow delete: if isAdmin() && isSameGuild(existing().get('guildId', ''));
+    }
+
     match /motifs/{motifId} {
       allow read: if isSignedIn() && isSameGuild(resource.data.guildId);
       allow create: if isAdmin() && isSameGuild(incoming().get('guildId', ''));
