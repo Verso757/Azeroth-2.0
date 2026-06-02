@@ -260,8 +260,8 @@ export default function DataConfig({ collectionName, title, fields = [], parentC
                             <span key={f.name} className="text-[11px] text-slate-500 truncate">{f.label}: {item[f.name]}</span>
                           ))}
                           {fields.filter(f => f.name !== 'name' && f.type === 'select').map(f => (
-                            <div key={f.name} className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                              <span className="text-[10px] text-slate-400 font-bold uppercase">{f.label}</span>
+                            <div key={f.name} className="flex items-center gap-2 mt-1" onClick={(e) => e.stopPropagation()}>
+                              <span className="text-xs text-slate-500 font-bold uppercase tracking-wide">{f.label}</span>
                               <select
                                 value={item[f.name] || ''}
                                 onChange={async (e) => {
@@ -274,10 +274,10 @@ export default function DataConfig({ collectionName, title, fields = [], parentC
                                     console.error("Error updating field inline", err);
                                   }
                                 }}
-                                className="text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 py-1 pl-2 pr-6 rounded-md border border-slate-200 outline-none cursor-pointer appearance-none transition-colors"
+                                className="text-sm font-bold text-slate-800 bg-white hover:bg-slate-50 py-2 pl-3 pr-8 rounded-lg border-2 border-slate-200 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 shadow-sm outline-none cursor-pointer appearance-none transition-all"
                                 style={{
                                     backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
-                                    backgroundPosition: `right 0.2rem center`,
+                                    backgroundPosition: `right 0.5rem center`,
                                     backgroundRepeat: `no-repeat`,
                                     backgroundSize: `1.2em 1.2em`
                                 }}

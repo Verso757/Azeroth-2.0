@@ -76,15 +76,12 @@ export default function NewExchange() {
     fetchRoutes();
   }, [cityId]);
 
-  const handleRouteChange = (rId: string) => {
-    setRouteId(rId);
-    const rt = routes.find(r => r.id === rId);
-    if (rt && rt.employeeId) {
-      const emp = employees.find((e: any) => e.id === rt.employeeId);
-      if (emp) setAffectedPerson(emp.name);
-    } else {
-      setAffectedPerson('');
-    }
+  const handleAsesorChange = (empId: string) => {
+    setEmployeeId(empId);
+    setRouteId(''); // reset route when asesor changes
+    const emp = employees.find(e => e.id === empId);
+    if (emp) setAffectedPerson(emp.name);
+    else setAffectedPerson('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -263,28 +260,30 @@ export default function NewExchange() {
                    </select>
                  </div>
                  <div className="space-y-2">
-                   <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Ruta</label>
+                   <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Asesor</label>
                    <select 
-                     value={routeId}
-                     onChange={e => handleRouteChange(e.target.value)}
+                     value={employeeId}
+                     onChange={e => handleAsesorChange(e.target.value)}
                      disabled={!cityId}
                      className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm font-medium text-slate-900 hover:border-slate-200 focus:border-primary-500 focus:bg-white focus:ring-0 transition-all outline-none disabled:opacity-50"
                    >
-                     <option value="">Selecciona Ruta</option>
-                     {routes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                     <option value="">Selecciona Asesor</option>
+                     {employees.filter(emp => routes.some(r => r.employeeId === emp.id)).map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                    </select>
                  </div>
                </div>
 
                <div className="space-y-2">
-                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Nombre del Asesor</label>
-                 <input 
-                   type="text" 
-                   value={affectedPerson}
-                   onChange={e => setAffectedPerson(e.target.value)}
-                   placeholder="Nombre del Asesor..."
-                   className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm font-medium text-slate-900 hover:border-slate-200 focus:border-primary-500 focus:bg-white focus:ring-0 transition-all outline-none"
-                 />
+                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Ruta</label>
+                 <select 
+                   value={routeId}
+                   onChange={e => setRouteId(e.target.value)}
+                   disabled={!employeeId}
+                   className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm font-medium text-slate-900 hover:border-slate-200 focus:border-primary-500 focus:bg-white focus:ring-0 transition-all outline-none disabled:opacity-50"
+                 >
+                   <option value="">Selecciona Ruta</option>
+                   {routes.filter(r => r.employeeId === employeeId).map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                 </select>
                </div>
              </>
            ) : (

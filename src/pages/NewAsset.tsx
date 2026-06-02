@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { collection, addDoc, serverTimestamp, doc, writeBatch } from 'firebase/firestore';
+import React, { useState, useEffect } from 'react';
+import { collection, serverTimestamp, doc, writeBatch, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -16,12 +16,26 @@ export default function NewAsset() {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
+  const [equipmentTypes, setEquipmentTypes] = useState<any[]>([]);
 
   const [type, setType] = useState('smartphone');
   const [brandName, setBrandName] = useState('');
   const [model, setModel] = useState('');
   const [uid, setUid] = useState('');
   const [notes, setNotes] = useState('');
+
+  useEffect(() => {
+    if (!profile) return;
+    const q = query(collection(db, 'equipmentTypes'), where('guildId', '==', profile.guildId));
+    const unsub = onSnapshot(q, (snapshot) => {
+      const types = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      setEquipmentTypes(types);
+      if (types.length > 0 && type === 'smartphone') {
+        setType(types[0].name);
+      }
+    });
+    return () => unsub();
+  }, [profile]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,9 +106,17 @@ export default function NewAsset() {
               onChange={e => setType(e.target.value)}
               className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm font-medium text-slate-900 hover:border-slate-200 focus:border-primary-500 focus:bg-white focus:ring-0 transition-all outline-none"
             >
-              {TYPE_OPTIONS.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
+              {equipmentTypes.length > 0 ? (
+                Array.from(new Set([...equipmentTypes.map(e => e.name), ...TYPE_OPTIONS.map(o => o.label)])).map(name => {
+                  const opt = TYPE_OPTIONS.find(o => o.label === name);
+                  const val = opt ? opt.value : name;
+                  return <option key={val} value={val}>{name}</option>;
+                })
+              ) : (
+                TYPE_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))
+              )}
             </select>
           </div>
 

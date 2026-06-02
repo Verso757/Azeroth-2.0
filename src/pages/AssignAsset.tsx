@@ -139,15 +139,12 @@ export default function AssignAsset() {
     }
   };
 
-  const handleRouteChange = (rId: string) => {
-    setSelectedRoute(rId);
-    const rt = routes.find(r => r.id === rId);
-    if (rt && rt.employeeId) {
-      const emp = employees.find(e => e.id === rt.employeeId);
-      if (emp) setSupervisorName(emp.name);
-    } else {
-      setSupervisorName('');
-    }
+  const handleAsesorChange = (empId: string) => {
+    setSelectedEmployee(empId);
+    setSelectedRoute('');
+    const emp = employees.find(e => e.id === empId);
+    if (emp) setSupervisorName(emp.name);
+    else setSupervisorName('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -406,29 +403,30 @@ export default function AssignAsset() {
                        </select>
                      </div>
                      <div className="space-y-2">
-                       <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Ruta</label>
+                       <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Asesor</label>
                        <select 
-                         value={selectedRoute}
-                         onChange={e => handleRouteChange(e.target.value)}
+                         value={selectedEmployee}
+                         onChange={e => handleAsesorChange(e.target.value)}
                          disabled={!selectedCity}
                          className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm font-medium text-slate-900 hover:border-slate-200 focus:border-primary-500 focus:bg-white focus:ring-0 transition-all outline-none disabled:opacity-50"
                        >
-                         <option value="">Selecciona Ruta</option>
-                         {routes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                         <option value="">Selecciona Asesor</option>
+                         {employees.filter(emp => routes.some(r => r.employeeId === emp.id)).map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                        </select>
                      </div>
                    </div>
     
                    <div className="space-y-2">
-                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Nombre del Asesor</label>
-                     <input 
-                       type="text"
-                       required
-                       value={supervisorName}
-                       onChange={e => setSupervisorName(e.target.value)}
-                       placeholder="Ej. Juan Pérez"
-                       className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm font-medium text-slate-900 hover:border-slate-200 focus:border-primary-500 focus:bg-white focus:ring-0 transition-all outline-none"
-                     />
+                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Ruta</label>
+                     <select 
+                       value={selectedRoute}
+                       onChange={e => setSelectedRoute(e.target.value)}
+                       disabled={!selectedEmployee}
+                       className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm font-medium text-slate-900 hover:border-slate-200 focus:border-primary-500 focus:bg-white focus:ring-0 transition-all outline-none disabled:opacity-50"
+                     >
+                       <option value="">Selecciona Ruta</option>
+                       {routes.filter(r => r.employeeId === selectedEmployee).map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                     </select>
                    </div>
                  </>
                ) : (

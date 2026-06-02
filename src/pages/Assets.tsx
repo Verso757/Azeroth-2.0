@@ -37,6 +37,7 @@ export default function Assets() {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [equipmentTypes, setEquipmentTypes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilt, setTypeFilt] = useState('all');
@@ -47,6 +48,10 @@ export default function Assets() {
   useEffect(() => {
     if (!profile) return;
     
+    // Load equipment types
+    const typesQ = query(collection(db, 'equipmentTypes'), where('guildId', '==', profile.guildId));
+    const unsubTypes = onSnapshot(typesQ, (snap) => setEquipmentTypes(snap.docs.map(d => ({id: d.id, ...d.data()}))));
+
     let q = query(collection(db, 'assets'));
     if (profile.role !== 'superadmin') {
        const allowedGuilds = Array.from(new Set([profile.guildId, ...(profile.allowedGuilds || [])])).filter(Boolean).slice(0, 30);
@@ -66,7 +71,10 @@ export default function Assets() {
       setLoading(false);
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'assets'));
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      unsubTypes();
+    };
   }, [profile]);
 
   const filteredAssets = assets.filter(asset => {
@@ -192,9 +200,17 @@ export default function Assets() {
             className="bg-slate-50 border-transparent rounded-2xl px-4 py-3 text-sm font-bold text-slate-600 outline-none hover:border-slate-200 focus:border-primary-500 cursor-pointer"
           >
             <option value="all">Tipos: Todos</option>
-            {Object.entries(TYPE_TRANSLATIONS).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
-            ))}
+            {equipmentTypes.length > 0 ? (
+              Array.from(new Set([...equipmentTypes.map(e => e.name), ...Object.values(TYPE_TRANSLATIONS)])).map(name => {
+                const k = Object.keys(TYPE_TRANSLATIONS).find(key => TYPE_TRANSLATIONS[key] === name);
+                const val = k ? k : name;
+                return <option key={val} value={val}>{name}</option>;
+              })
+            ) : (
+              Object.entries(TYPE_TRANSLATIONS).map(([k, v]) => (
+                <option key={k} value={k}>{v}</option>
+              ))
+            )}
           </select>
           
           <select 
@@ -240,7 +256,7 @@ export default function Assets() {
                         </div>
                         <div>
                           <p className="font-bold text-slate-900 leading-tight">{asset.model}</p>
-                          <p className="text-sm text-slate-500 font-medium">{asset.brandName || '-'} • {TYPE_TRANSLATIONS[asset.type] || asset.type}</p>
+                          <p className="text-sm text-slate-500 font-medium">{asset.brandName || '-'} • {equipmentTypes.find(et => et.name === asset.type)?.name || TYPE_TRANSLATIONS[asset.type] || asset.type}</p>
                         </div>
                       </div>
                     </td>
