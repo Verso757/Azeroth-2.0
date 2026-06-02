@@ -255,12 +255,37 @@ export default function DataConfig({ collectionName, title, fields = [], parentC
                           {parentData.find(p => p.id === item[parentCollection.localField])?.[parentCollection.parentField] || 'Desconocido'}
                         </span>
                       )}
-                      <div className="flex gap-2 mt-0.5">
+                      <div className="flex flex-wrap gap-2 mt-2">
                           {fields.filter(f => f.name !== 'name' && f.type !== 'select').map(f => (
                             <span key={f.name} className="text-[11px] text-slate-500 truncate">{f.label}: {item[f.name]}</span>
                           ))}
                           {fields.filter(f => f.name !== 'name' && f.type === 'select').map(f => (
-                            <span key={f.name} className="text-[10px] font-medium text-slate-600 truncate bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">{f.options?.find(o => o.value === item[f.name])?.label || item[f.name]}</span>
+                            <div key={f.name} className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                              <span className="text-[10px] text-slate-400 font-bold uppercase">{f.label}</span>
+                              <select
+                                value={item[f.name] || ''}
+                                onChange={async (e) => {
+                                  try {
+                                    await updateDoc(doc(db, collectionName, item.id), {
+                                      [f.name]: e.target.value,
+                                      updatedAt: serverTimestamp()
+                                    });
+                                  } catch (err) {
+                                    console.error("Error updating field inline", err);
+                                  }
+                                }}
+                                className="text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 py-1 pl-2 pr-6 rounded-md border border-slate-200 outline-none cursor-pointer appearance-none transition-colors"
+                                style={{
+                                    backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                                    backgroundPosition: `right 0.2rem center`,
+                                    backgroundRepeat: `no-repeat`,
+                                    backgroundSize: `1.2em 1.2em`
+                                }}
+                              >
+                                <option value="">(Asignar)</option>
+                                {f.options?.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                              </select>
+                            </div>
                           ))}
                       </div>
                     </div>
