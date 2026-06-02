@@ -26,7 +26,7 @@ const getIconForCollection = (name: string) => {
   }
 };
 
-export default function DataConfig({ collectionName, title, fields = [], parentCollection, selectedGuild }: DataConfigProps) {
+export default function DataConfig({ collectionName, title, fields = [], parentCollection, selectedGuild, extraActions }: DataConfigProps) {
   const { profile } = useAuth();
   const [data, setData] = useState<any[]>([]);
   const [parentData, setParentData] = useState<any[]>([]);
