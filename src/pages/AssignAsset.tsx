@@ -344,7 +344,9 @@ export default function AssignAsset() {
               className={cn("p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all", operation === 'return' ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-100 bg-white hover:border-slate-200 hover:bg-slate-50 text-slate-600')}
             >
               <RotateCcw className="w-6 h-6" />
-              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-center">Retornar</span>
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-center">
+                 {asset.status === 'maintenance' ? 'A Disponible' : 'Retornar'}
+              </span>
             </button>
             
             {canDoMaintenance && (
