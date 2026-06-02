@@ -560,7 +560,7 @@ export default function AdminPanel() {
                     title="Personal / Asesores" 
                     fields={[ 
                       { name: 'name', label: 'Nombre Completo' },
-                      { name: 'position', label: 'Cargo o Puesto', type: 'select', options: [{value: 'Asesor', label:'Asesor'}, {value: 'Supervisor', label:'Supervisor'}, {value: 'Administrativo', label:'Administrativo'}] } 
+                      { name: 'position', label: 'Cargo o Puesto', type: 'select', options: [{value: 'Supervisor', label:'Supervisor'}] } 
                     ]} 
                     selectedGuild={selectedAdminGuild}
                     extraActions={[
