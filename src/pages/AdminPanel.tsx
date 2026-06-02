@@ -21,6 +21,7 @@ export default function AdminPanel() {
   const [guilds, setGuilds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'issues' | 'users' | 'areas' | 'settings' | 'guilds' | 'catalogs'>('issues');
+  const [activeCatalog, setActiveCatalog] = useState<'cities' | 'routes' | 'categories' | 'motifs' | 'brands' | 'employees'>('cities');
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [resolutionText, setResolutionText] = useState('');
   const [selectedAdminGuild, setSelectedAdminGuild] = useState<string>('');
@@ -476,36 +477,72 @@ export default function AdminPanel() {
 
         {activeTab === 'catalogs' && (
           <motion.div key="catalogs" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
-             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                <DataConfig 
-                  collectionName="cities" 
-                  title="Ciudades / Sucursales" 
-                  fields={[ { name: 'name', label: 'Nombre' } ]} 
-                  selectedGuild={selectedAdminGuild}
-                />
-                <DataConfig 
-                  collectionName="routes" 
-                  title="Rutas" 
-                  fields={[ 
-                    { name: 'name', label: 'Nombre' },
-                    { name: 'employeeId', label: 'Asesor asignado', type: 'select', options: employees.map(e => ({ value: e.id, label: e.name })) }
-                  ]} 
-                  parentCollection={{ name: 'cities', localField: 'cityId', parentField: 'name', docNameField: 'Ciudad' }}
-                  selectedGuild={selectedAdminGuild}
-                />
-                <DataConfig 
-                  collectionName="categories" 
-                  title="Categorías de Incidencias" 
-                  fields={[ { name: 'name', label: 'Nombre' } ]} 
-                  selectedGuild={selectedAdminGuild}
-                />
-                <DataConfig 
-                  collectionName="motifs" 
-                  title="Motivos de Cambio" 
-                  fields={[ { name: 'name', label: 'Motivo' } ]} 
-                  selectedGuild={selectedAdminGuild}
-                />
-                <div className="md:col-span-2 xl:col-span-1">
+             <div className="flex flex-wrap gap-2 mb-6">
+               {[
+                 { id: 'cities', label: 'Ciudades / Sucursales' },
+                 { id: 'routes', label: 'Rutas' },
+                 { id: 'categories', label: 'Incidencias' },
+                 { id: 'motifs', label: 'Motivos de Cambio' },
+                 { id: 'brands', label: 'Marcas / Modelos' },
+                 { id: 'employees', label: 'Personal / Asesores' }
+               ].map(cat => (
+                 <button
+                   key={cat.id}
+                   onClick={() => setActiveCatalog(cat.id as any)}
+                   className={cn(
+                     "px-5 py-2.5 rounded-xl font-bold text-sm transition-all border-2",
+                     activeCatalog === cat.id 
+                       ? "border-primary-600 bg-primary-50 text-primary-700"
+                       : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300 shadow-sm"
+                   )}
+                 >
+                   {cat.label}
+                 </button>
+               ))}
+             </div>
+
+             <div className="mt-4">
+                {activeCatalog === 'cities' && (
+                  <DataConfig 
+                    collectionName="cities" 
+                    title="Ciudades / Sucursales" 
+                    fields={[ { name: 'name', label: 'Nombre' } ]} 
+                    selectedGuild={selectedAdminGuild}
+                  />
+                )}
+                
+                {activeCatalog === 'routes' && (
+                  <DataConfig 
+                    collectionName="routes" 
+                    title="Rutas" 
+                    fields={[ 
+                      { name: 'name', label: 'Nombre' },
+                      { name: 'employeeId', label: 'Asesor asignado', type: 'select', options: employees.map(e => ({ value: e.id, label: e.name })) }
+                    ]} 
+                    parentCollection={{ name: 'cities', localField: 'cityId', parentField: 'name', docNameField: 'Ciudad' }}
+                    selectedGuild={selectedAdminGuild}
+                  />
+                )}
+
+                {activeCatalog === 'categories' && (
+                  <DataConfig 
+                    collectionName="categories" 
+                    title="Categorías de Incidencias" 
+                    fields={[ { name: 'name', label: 'Nombre' } ]} 
+                    selectedGuild={selectedAdminGuild}
+                  />
+                )}
+
+                {activeCatalog === 'motifs' && (
+                  <DataConfig 
+                    collectionName="motifs" 
+                    title="Motivos de Cambio" 
+                    fields={[ { name: 'name', label: 'Motivo' } ]} 
+                    selectedGuild={selectedAdminGuild}
+                  />
+                )}
+
+                {activeCatalog === 'brands' && (
                   <DataConfig 
                     collectionName="brands" 
                     title="Marcas / Modelos de Equipos" 
@@ -515,8 +552,9 @@ export default function AdminPanel() {
                     ]} 
                     selectedGuild={selectedAdminGuild}
                   />
-                </div>
-                <div className="md:col-span-2 xl:col-span-1">
+                )}
+
+                {activeCatalog === 'employees' && (
                   <DataConfig 
                     collectionName="employees" 
                     title="Personal / Asesores" 
@@ -533,7 +571,7 @@ export default function AdminPanel() {
                       }
                     ]}
                   />
-                </div>
+                )}
              </div>
           </motion.div>
         )}

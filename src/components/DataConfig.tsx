@@ -142,7 +142,7 @@ export default function DataConfig({ collectionName, title, fields = [], parentC
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[500px] overflow-hidden">
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[700px] overflow-hidden">
       <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col gap-3">
         <div className="flex items-center gap-3">
           {getIconForCollection(collectionName)}
