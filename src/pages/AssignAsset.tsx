@@ -103,15 +103,16 @@ export default function AssignAsset() {
 
   useEffect(() => {
     const fetchRoutes = async () => {
-      if (!selectedCity) return;
+      if (!selectedCity || !profile) return;
       try {
-        const q = query(collection(db, 'routes'), where('cityId', '==', selectedCity));
+        const allowedGuilds = profile.allowedGuilds ? [profile.guildId, ...profile.allowedGuilds] : [profile.guildId];
+        const q = query(collection(db, 'routes'), where('guildId', 'in', allowedGuilds.slice(0, 30)), where('cityId', '==', selectedCity));
         const res = await getDocs(q);
         setRoutes(res.docs.map(d => ({ id: d.id, ...d.data() } as Route)).sort((a,b) => (a.name || '').localeCompare(b.name || '')));
       } catch (err) {}
     };
     fetchRoutes();
-  }, [selectedCity]);
+  }, [selectedCity, profile]);
 
   // Set default operation based on current status
   useEffect(() => {
@@ -141,7 +142,6 @@ export default function AssignAsset() {
 
   const handleAsesorChange = (empId: string) => {
     setSelectedEmployee(empId);
-    setSelectedRoute('');
     const emp = employees.find(e => e.id === empId);
     if (emp) setSupervisorName(emp.name);
     else setSupervisorName('');
@@ -411,7 +411,7 @@ export default function AssignAsset() {
                          className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm font-medium text-slate-900 hover:border-slate-200 focus:border-primary-500 focus:bg-white focus:ring-0 transition-all outline-none disabled:opacity-50"
                        >
                          <option value="">Selecciona Asesor</option>
-                         {employees.filter(emp => routes.some(r => r.employeeId === emp.id)).map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                         {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                        </select>
                      </div>
                    </div>
@@ -421,11 +421,11 @@ export default function AssignAsset() {
                      <select 
                        value={selectedRoute}
                        onChange={e => setSelectedRoute(e.target.value)}
-                       disabled={!selectedEmployee}
+                       disabled={!selectedCity}
                        className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm font-medium text-slate-900 hover:border-slate-200 focus:border-primary-500 focus:bg-white focus:ring-0 transition-all outline-none disabled:opacity-50"
                      >
                        <option value="">Selecciona Ruta</option>
-                       {routes.filter(r => r.employeeId === selectedEmployee).map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                       {routes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                      </select>
                    </div>
                  </>

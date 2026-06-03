@@ -17,6 +17,7 @@ export default function NewAsset() {
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
   const [equipmentTypes, setEquipmentTypes] = useState<any[]>([]);
+  const [brands, setBrands] = useState<any[]>([]);
 
   const [type, setType] = useState('smartphone');
   const [brandName, setBrandName] = useState('');
@@ -26,16 +27,36 @@ export default function NewAsset() {
 
   useEffect(() => {
     if (!profile) return;
-    const q = query(collection(db, 'equipmentTypes'), where('guildId', '==', profile.guildId));
-    const unsub = onSnapshot(q, (snapshot) => {
-      const types = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    const qTypes = query(collection(db, 'equipmentTypes'), where('guildId', '==', profile.guildId));
+    const unsubTypes = onSnapshot(qTypes, (snapshot) => {
+      const types = snapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
       setEquipmentTypes(types);
       if (types.length > 0 && type === 'smartphone') {
         setType(types[0].name);
       }
     });
-    return () => unsub();
+
+    const qBrands = query(collection(db, 'brands'), where('guildId', '==', profile.guildId));
+    const unsubBrands = onSnapshot(qBrands, (snapshot) => {
+      setBrands(snapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
+    });
+
+    return () => {
+      unsubTypes();
+      unsubBrands();
+    };
   }, [profile]);
+
+  const handleBrandChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setBrandName(val);
+    
+    // Auto-select type if brand is known
+    const foundBrand = brands.find(b => b.name?.toLowerCase() === val.toLowerCase());
+    if (foundBrand && foundBrand.type) {
+      setType(foundBrand.type);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,10 +159,16 @@ export default function NewAsset() {
               <input 
                 type="text" 
                 value={brandName}
-                onChange={e => setBrandName(e.target.value)}
+                onChange={handleBrandChange}
+                list="brands-list"
                 placeholder="Ej. Zebra, Samsung..."
                 className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm font-medium text-slate-900 hover:border-slate-200 focus:border-primary-500 focus:bg-white focus:ring-0 transition-all outline-none"
               />
+              <datalist id="brands-list">
+                {brands.map(b => (
+                  <option key={b.id} value={b.name} />
+                ))}
+              </datalist>
             </div>
 
             <div className="space-y-2">

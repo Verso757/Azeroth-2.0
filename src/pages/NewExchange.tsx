@@ -61,12 +61,13 @@ export default function NewExchange() {
 
   useEffect(() => {
     const fetchRoutes = async () => {
-      if (!cityId) {
+      if (!cityId || !profile) {
         setRoutes([]);
         return;
       }
       try {
-        const routeSnap = await getDocs(query(collection(db, 'routes'), where('cityId', '==', cityId)));
+        const adminGuilds = Array.from(new Set([profile.guildId, ...(profile.allowedGuilds || [])])).filter(Boolean).slice(0, 30);
+        const routeSnap = await getDocs(query(collection(db, 'routes'), where('guildId', 'in', adminGuilds), where('cityId', '==', cityId)));
         const sortedRoutes = routeSnap.docs.map(d => ({ id: d.id, ...d.data() } as Route)).sort((a,b) => (a.name || '').localeCompare(b.name || ''));
         setRoutes(sortedRoutes);
       } catch (e) {
@@ -74,11 +75,10 @@ export default function NewExchange() {
       }
     };
     fetchRoutes();
-  }, [cityId]);
+  }, [cityId, profile]);
 
   const handleAsesorChange = (empId: string) => {
     setEmployeeId(empId);
-    setRouteId(''); // reset route when asesor changes
     const emp = employees.find(e => e.id === empId);
     if (emp) setAffectedPerson(emp.name);
     else setAffectedPerson('');
@@ -268,7 +268,7 @@ export default function NewExchange() {
                      className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm font-medium text-slate-900 hover:border-slate-200 focus:border-primary-500 focus:bg-white focus:ring-0 transition-all outline-none disabled:opacity-50"
                    >
                      <option value="">Selecciona Asesor</option>
-                     {employees.filter(emp => routes.some(r => r.employeeId === emp.id)).map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                     {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                    </select>
                  </div>
                </div>
@@ -278,11 +278,11 @@ export default function NewExchange() {
                  <select 
                    value={routeId}
                    onChange={e => setRouteId(e.target.value)}
-                   disabled={!employeeId}
+                   disabled={!cityId}
                    className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm font-medium text-slate-900 hover:border-slate-200 focus:border-primary-500 focus:bg-white focus:ring-0 transition-all outline-none disabled:opacity-50"
                  >
                    <option value="">Selecciona Ruta</option>
-                   {routes.filter(r => r.employeeId === employeeId).map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                   {routes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                  </select>
                </div>
              </>
